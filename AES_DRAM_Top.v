@@ -7,6 +7,7 @@ module AES_DRAM_Top(
     input  wire         CLK_spw_1v8,
     input  wire         CLRb_spw_1v8,
     input  wire         EN,
+    input  wire         INIT,
     input  wire [127:0] Kin,
     input  wire [127:0] Din,
     input  wire         Kdrdy,
@@ -99,6 +100,7 @@ module AES_DRAM_Top(
     output wire         Kvld,
     output wire         Dvld,
     output wire         BSY,
+    output wire         InitDone,
     output wire         Trigger
 );
 
@@ -119,23 +121,46 @@ module AES_DRAM_Top(
     wire [2:0]  demux_add [0:15];
     wire [5:0]  rwl_add   [0:15];
 
-    // Wires from DRAM controller to top-level pins
-    wire [16:1] dram_din;
-    wire [16:1] dram_rad;
-    wire [16:1] dram_lim;
-    wire [1:0]  lim_sel;
-    wire        add_in_w;
-    wire        add_vld_w;
-    wire        data_vld_w;
-    wire        clk_out_w;
-    wire        wri_en_w;
-    wire        rd_en_w;
-    wire        vsaen_w;
-    wire        ref_wwl_w;
-    wire        dmx2_w;
-    wire [2:0]  pc_data_w;
-    wire [1:0]  pc_d_in_w;
-    wire [1:0]  pc_r_ad_w;
+    // Wires from DRAM controller to top-level pins (AES operation)
+    wire [16:1] aes_dram_din;
+    wire [16:1] aes_dram_rad;
+    wire [16:1] aes_dram_lim;
+    wire [1:0]  aes_lim_sel;
+    wire        aes_add_in_w;
+    wire        aes_add_vld_w;
+    wire        aes_data_vld_w;
+    wire        aes_clk_out_w;
+    wire        aes_wri_en_w;
+    wire        aes_rd_en_w;
+    wire        aes_vsaen_w;
+    wire        aes_ref_wwl_w;
+    wire        aes_dmx2_w;
+    wire [2:0]  aes_pc_data_w;
+    wire [1:0]  aes_pc_d_in_w;
+    wire [1:0]  aes_pc_r_ad_w;
+
+    // Wires from key/SBOX initialization module
+    wire [16:1] init_dram_din;
+    wire [16:1] init_dram_rad;
+    wire [16:1] init_dram_lim;
+    wire [1:0]  init_lim_sel;
+    wire        init_add_in_w;
+    wire        init_add_vld_w;
+    wire        init_data_vld_w;
+    wire        init_clk_out_w;
+    wire        init_wri_en_w;
+    wire        init_rd_en_w;
+    wire        init_vsaen_w;
+    wire        init_ref_wwl_w;
+    wire        init_dmx2_w;
+    wire        init_cinh_ps_1v8;
+    wire        init_sr_ps_1v8;
+    wire        init_clk_ps_1v8;
+    wire        init_clrb_spw_1v8;
+    wire        init_clk_spw_1v8;
+    wire        init_clrb_spr_1v8;
+    wire        init_clk_spr_1v8;
+    wire        init_done;
 
     // ------------------------------------------------------------------
     // AES core. The DRAM output byte is broadcast to all 16 RIO inputs.
@@ -145,7 +170,7 @@ module AES_DRAM_Top(
     StdAES_Optimized u_aes (
         .CLK   (CLK),
         .RSTn  (RSTn),
-        .EN    (EN),
+        .EN    (EN && init_done),
         .Din   (Din),
         .Kin   (Kin),
         .KDrdy (Kdrdy),
@@ -184,7 +209,7 @@ module AES_DRAM_Top(
     DRAM_write_read_16core u_dram (
         .clk          (CLK),
         .rst_n        (RSTn),
-        .IO_EN        (EN),
+        .IO_EN        (EN && init_done),
         .IO_MODEL     (2'b10), // read mode
         .CIM_model    (2'b00),
         .DATA_IN      (lim_in),
@@ -217,63 +242,118 @@ module AES_DRAM_Top(
         .DRAM_DATA_OUT(dram_byte),
         .RD_DONE      (rd_done),
         .DRAM16_data  (DRAM16_data),
-        .PC_data      (pc_data_w),
-        .ADD_IN       (add_in_w),
-        .ADD_VALID_IN (add_vld_w),
-        .PC_D_IN      (pc_d_in_w),
-        .PC_data      (),
-        .ADD_IN       (add_in_w),
-        .ADD_VALID_IN (add_vld_w),
-        .PC_D_IN      (),
-        .D_IN         (dram_din),
-        .DATA_VALID_IN(data_vld_w),
-        .clk_out      (clk_out_w),
-        .WRI_EN       (wri_en_w),
-        .R_AD         (dram_rad),
-        .PC_R_AD      (pc_r_ad_w),
-        .PC_R_AD      (pc_r_ad_w),
-        .PC_R_AD      (),
-        .LIM_IN       (dram_lim),
-        .LIM_SEL      (lim_sel),
-        .DE_ADD3      (dmx2_w),
-        .RD_EN        (rd_en_w),
-        .VSAEN        (vsaen_w),
-        .REF_WWL      (ref_wwl_w)
+        .PC_data      (aes_pc_data_w),
+        .ADD_IN       (aes_add_in_w),
+        .ADD_VALID_IN (aes_add_vld_w),
+        .PC_D_IN      (aes_pc_d_in_w),
+        .D_IN         (aes_dram_din),
+        .DATA_VALID_IN(aes_data_vld_w),
+        .clk_out      (aes_clk_out_w),
+        .WRI_EN       (aes_wri_en_w),
+        .R_AD         (aes_dram_rad),
+        .PC_R_AD      (aes_pc_r_ad_w),
+        .LIM_IN       (aes_dram_lim),
+        .LIM_SEL      (aes_lim_sel),
+        .DE_ADD3      (aes_dmx2_w),
+        .RD_EN        (aes_rd_en_w),
+        .VSAEN        (aes_vsaen_w),
+        .REF_WWL      (aes_ref_wwl_w)
     );
 
-    // Map DRAM controller signals to board-level ports
-    assign ADDIN_1v8   = add_in_w;
-    assign ADVLD_1v8   = add_vld_w;
-    assign DVLD_1v8    = data_vld_w;
-    assign CLK_chip_1v8 = clk_out_w;
-    assign WRIEN_1v8   = wri_en_w;
-    assign RDEN_1v8    = rd_en_w;
-    assign VSAEN_1v8   = vsaen_w;
-    assign REFWWL_1v8  = ref_wwl_w;
-    assign DMX2_1v8    = dmx2_w;
-    assign LIMSEL0_1v8 = lim_sel[0];
-    assign LIMSEL1_1v8 = lim_sel[1];
+    // Initialization module to program DRAM with round keys and SBOX
+    DRAM_Key_Sbox_Init u_init (
+        .CLK        (CLK),
+        .RSTn       (RSTn),
+        .START      (INIT),
+        .DONE       (init_done),
+        .RAD_1v8_1  (init_dram_rad[1]),  .RAD_1v8_2  (init_dram_rad[2]),
+        .RAD_1v8_3  (init_dram_rad[3]),  .RAD_1v8_4  (init_dram_rad[4]),
+        .RAD_1v8_5  (init_dram_rad[5]),  .RAD_1v8_6  (init_dram_rad[6]),
+        .RAD_1v8_7  (init_dram_rad[7]),  .RAD_1v8_8  (init_dram_rad[8]),
+        .RAD_1v8_9  (init_dram_rad[9]),  .RAD_1v8_10 (init_dram_rad[10]),
+        .RAD_1v8_11 (init_dram_rad[11]), .RAD_1v8_12 (init_dram_rad[12]),
+        .RAD_1v8_13 (init_dram_rad[13]), .RAD_1v8_14 (init_dram_rad[14]),
+        .RAD_1v8_15 (init_dram_rad[15]), .RAD_1v8_16 (init_dram_rad[16]),
+        .DIN_1v8_1  (init_dram_din[1]),  .DIN_1v8_2  (init_dram_din[2]),
+        .DIN_1v8_3  (init_dram_din[3]),  .DIN_1v8_4  (init_dram_din[4]),
+        .DIN_1v8_5  (init_dram_din[5]),  .DIN_1v8_6  (init_dram_din[6]),
+        .DIN_1v8_7  (init_dram_din[7]),  .DIN_1v8_8  (init_dram_din[8]),
+        .DIN_1v8_9  (init_dram_din[9]),  .DIN_1v8_10 (init_dram_din[10]),
+        .DIN_1v8_11 (init_dram_din[11]), .DIN_1v8_12 (init_dram_din[12]),
+        .DIN_1v8_13 (init_dram_din[13]), .DIN_1v8_14 (init_dram_din[14]),
+        .DIN_1v8_15 (init_dram_din[15]), .DIN_1v8_16 (init_dram_din[16]),
+        .ADDIN_1v8  (init_add_in_w),
+        .ADVLD_1v8  (init_add_vld_w),
+        .DVLD_1v8   (init_data_vld_w),
+        .DMX2_1v8   (init_dmx2_w),
+        .RDEN_1v8   (init_rd_en_w),
+        .WRIEN_1v8  (init_wri_en_w),
+        .VSAEN_1v8  (init_vsaen_w),
+        .REFWWL_1v8 (init_ref_wwl_w),
+        .CLK_chip_1v8(init_clk_out_w),
+        .CINH_ps_1v8(init_cinh_ps_1v8),
+        .SR_ps_1v8  (init_sr_ps_1v8),
+        .CLK_ps_1v8 (init_clk_ps_1v8),
+        .CLRb_spw_1v8(init_clrb_spw_1v8),
+        .CLK_spw_1v8(init_clk_spw_1v8),
+        .CLRb_spr_1v8(init_clrb_spr_1v8),
+        .CLK_spr_1v8(init_clk_spr_1v8),
+        .LIMSEL0_1v8(init_lim_sel[0]),
+        .LIMSEL1_1v8(init_lim_sel[1]),
+        .LIMIN_1v8_1 (init_dram_lim[1]),  .LIMIN_1v8_2 (init_dram_lim[2]),
+        .LIMIN_1v8_3 (init_dram_lim[3]),  .LIMIN_1v8_4 (init_dram_lim[4]),
+        .LIMIN_1v8_5 (init_dram_lim[5]),  .LIMIN_1v8_6 (init_dram_lim[6]),
+        .LIMIN_1v8_7 (init_dram_lim[7]),  .LIMIN_1v8_8 (init_dram_lim[8]),
+        .LIMIN_1v8_9 (init_dram_lim[9]),  .LIMIN_1v8_10(init_dram_lim[10]),
+        .LIMIN_1v8_11(init_dram_lim[11]), .LIMIN_1v8_12(init_dram_lim[12]),
+        .LIMIN_1v8_13(init_dram_lim[13]), .LIMIN_1v8_14(init_dram_lim[14]),
+        .LIMIN_1v8_15(init_dram_lim[15]), .LIMIN_1v8_16(init_dram_lim[16])
+    );
 
-    assign {CINH_ps_1v8, SR_ps_1v8, CLK_ps_1v8} = pc_data_w;
-    assign {CLRb_spw_1v8, CLK_spw_1v8}          = pc_d_in_w;
-    assign {CLRb_spr_1v8, CLK_spr_1v8}          = pc_r_ad_w;
+    // Select between initialization and normal AES operation
+    wire init_active = ~init_done;
+    assign ADDIN_1v8   = init_active ? init_add_in_w   : aes_add_in_w;
+    assign ADVLD_1v8   = init_active ? init_add_vld_w  : aes_add_vld_w;
+    assign DVLD_1v8    = init_active ? init_data_vld_w : aes_data_vld_w;
+    assign CLK_chip_1v8 = init_active ? init_clk_out_w : aes_clk_out_w;
+    assign WRIEN_1v8   = init_active ? init_wri_en_w   : aes_wri_en_w;
+    assign RDEN_1v8    = init_active ? init_rd_en_w    : aes_rd_en_w;
+    assign VSAEN_1v8   = init_active ? init_vsaen_w   : aes_vsaen_w;
+    assign REFWWL_1v8  = init_active ? init_ref_wwl_w : aes_ref_wwl_w;
+    assign DMX2_1v8    = init_active ? init_dmx2_w    : aes_dmx2_w;
+    assign LIMSEL0_1v8 = init_active ? init_lim_sel[0]: aes_lim_sel[0];
+    assign LIMSEL1_1v8 = init_active ? init_lim_sel[1]: aes_lim_sel[1];
+
+    assign {CINH_ps_1v8, SR_ps_1v8, CLK_ps_1v8} =
+           init_active ? {init_cinh_ps_1v8, init_sr_ps_1v8, init_clk_ps_1v8}
+                        : aes_pc_data_w;
+    assign {CLRb_spw_1v8, CLK_spw_1v8} =
+           init_active ? {init_clrb_spw_1v8, init_clk_spw_1v8}
+                        : aes_pc_d_in_w;
+    assign {CLRb_spr_1v8, CLK_spr_1v8} =
+           init_active ? {init_clrb_spr_1v8, init_clk_spr_1v8}
+                        : aes_pc_r_ad_w;
 
     assign {RAD_1v8_16, RAD_1v8_15, RAD_1v8_14, RAD_1v8_13,
             RAD_1v8_12, RAD_1v8_11, RAD_1v8_10, RAD_1v8_9,
             RAD_1v8_8,  RAD_1v8_7,  RAD_1v8_6,  RAD_1v8_5,
-            RAD_1v8_4,  RAD_1v8_3,  RAD_1v8_2,  RAD_1v8_1} = dram_rad;
+            RAD_1v8_4,  RAD_1v8_3,  RAD_1v8_2,  RAD_1v8_1} =
+           init_active ? init_dram_rad : aes_dram_rad;
     assign {DIN_1v8_16, DIN_1v8_15, DIN_1v8_14, DIN_1v8_13,
             DIN_1v8_12, DIN_1v8_11, DIN_1v8_10, DIN_1v8_9,
             DIN_1v8_8,  DIN_1v8_7,  DIN_1v8_6,  DIN_1v8_5,
-            DIN_1v8_4,  DIN_1v8_3,  DIN_1v8_2,  DIN_1v8_1} = dram_din;
+            DIN_1v8_4,  DIN_1v8_3,  DIN_1v8_2,  DIN_1v8_1} =
+           init_active ? init_dram_din : aes_dram_din;
     assign {LIMIN_1v8_16, LIMIN_1v8_15, LIMIN_1v8_14, LIMIN_1v8_13,
             LIMIN_1v8_12, LIMIN_1v8_11, LIMIN_1v8_10, LIMIN_1v8_9,
             LIMIN_1v8_8,  LIMIN_1v8_7,  LIMIN_1v8_6,  LIMIN_1v8_5,
-            LIMIN_1v8_4,  LIMIN_1v8_3,  LIMIN_1v8_2,  LIMIN_1v8_1} = dram_lim;
+            LIMIN_1v8_4,  LIMIN_1v8_3,  LIMIN_1v8_2,  LIMIN_1v8_1} =
+           init_active ? init_dram_lim : aes_dram_lim;
 
     // output signals following the required interface naming
 
-    assign Trigger = EN;
+    assign InitDone = init_done;
+    assign Trigger  = EN && init_done;
 
 endmodule
 
