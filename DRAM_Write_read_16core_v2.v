@@ -50,6 +50,7 @@ module DRAM_write_read_16core(
     // 输入数据地址
     // 写地址16块一致
     input wire [5:0] WWL_ADD,
+    output wire wr_done,
     // 读出地址 16块暂不共用
     input wire [5:0]RWL_DEC_ADD1,
     input wire [5:0]RWL_DEC_ADD2,
