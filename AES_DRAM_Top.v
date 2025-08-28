@@ -101,9 +101,6 @@ module AES_DRAM_Top(
     output wire         Trigger
 );
 
-    // Internal aliases for renamed ports
-    wire CLK  = CLK_spw_1v8;
-    wire RSTn = CLRb_spw_1v8;
 
     // DRAM read data bus collected from individual pins
     wire [16:1] DRAM16_data = {ROUT_1v8_16, ROUT_1v8_15, ROUT_1v8_14, ROUT_1v8_13,
