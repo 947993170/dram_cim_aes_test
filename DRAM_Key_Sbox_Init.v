@@ -6,6 +6,7 @@
 module DRAM_Key_Sbox_Init (
     input  wire        CLK,
     input  wire        RSTn,
+    input  wire        wr_done,
     input  wire        START,
     output reg         DONE,
     // signals driving the external DRAM controller
