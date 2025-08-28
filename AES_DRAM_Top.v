@@ -257,7 +257,7 @@ module AES_DRAM_Top(
         .rst_n        (RSTn),
         .IO_EN        (io_en_sel),
         .IO_MODEL     (io_model_sel),
-        .CIM_model    (2'b00),
+        .CIM_model    (2'b01),
         .DATA_IN      (data_in_sel),
         .WBL_DATA_IN1 (wbl_data_in1),   .WBL_DATA_IN2 (wbl_data_in2),
         .WBL_DATA_IN3 (wbl_data_in3),   .WBL_DATA_IN4 (wbl_data_in4),
