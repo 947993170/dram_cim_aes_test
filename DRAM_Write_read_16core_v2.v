@@ -84,7 +84,22 @@ module DRAM_write_read_16core(
     input wire [1:0]DEMUX_ADD15,
     input wire [1:0]DEMUX_ADD16,
     input wire DEMUX_ADD_3,
-    output wire [7:0] DRAM_DATA_OUT, // DRAM_DATA_OUT = DRAM_data DRAM数据读出
+    output reg [7:0] DRAM_DATA_OUT1, // DRAM_DATA_OUT = DRAM_data DRAM数据读出
+    output reg [7:0] DRAM_DATA_OUT2, // 16块芯片的数据读出
+    output reg [7:0] DRAM_DATA_OUT3,
+    output reg [7:0] DRAM_DATA_OUT4,
+    output reg [7:0] DRAM_DATA_OUT5,
+    output reg [7:0] DRAM_DATA_OUT6,
+    output reg [7:0] DRAM_DATA_OUT7,
+    output reg [7:0] DRAM_DATA_OUT8,
+    output reg [7:0] DRAM_DATA_OUT9,
+    output reg [7:0] DRAM_DATA_OUT10,
+    output reg [7:0] DRAM_DATA_OUT11,
+    output reg [7:0] DRAM_DATA_OUT12,
+    output reg [7:0] DRAM_DATA_OUT13,
+    output reg [7:0] DRAM_DATA_OUT14,
+    output reg [7:0] DRAM_DATA_OUT15,
+    output reg [7:0] DRAM_DATA_OUT16,
     output reg RD_DONE, // DRAM_DATA_OUT done信号
     // DRAM_IO
     // IO数据DRAM➡FPGA
@@ -108,6 +123,8 @@ module DRAM_write_read_16core(
     output wire VSAEN,
     output reg REF_WWL
     );
+
+    wire [7:0] DRAM_DATA_OUT;
     // generate clock
     wire clk_400m;
     clk_wiz_400m u_clk_wiz_400m(
