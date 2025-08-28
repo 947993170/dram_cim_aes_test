@@ -108,8 +108,14 @@ module AES_DRAM_Top(
                                ROUT_1v8_4,  ROUT_1v8_3,  ROUT_1v8_2,  ROUT_1v8_1};
 
     // Wires between AES core and DRAM controller
-    wire [7:0]  dram_byte;
+    // Each DRAM_DATA_OUT bus is 8-bits wide and feeds the AES core via RIO_xx
+    wire [7:0]  dram_byte1,  dram_byte2,  dram_byte3,  dram_byte4;
+    wire [7:0]  dram_byte5,  dram_byte6,  dram_byte7,  dram_byte8;
+    wire [7:0]  dram_byte9,  dram_byte10, dram_byte11, dram_byte12;
+    wire [7:0]  dram_byte13, dram_byte14, dram_byte15, dram_byte16;
+
     wire        rd_done;
+    wire        wr_done;
     wire [15:0] lim_in;
     wire [2:0]  demux_add [0:15];
     wire [5:0]  rwl_add   [0:15];
