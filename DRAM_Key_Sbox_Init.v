@@ -4,78 +4,29 @@
 // streams them into the DRAM interface.
 
 module DRAM_Key_Sbox_Init (
-    input  wire CLK,
-    input  wire RSTn,
-    input  wire START,
-    output reg  DONE,
-    // DRAM control/data outputs (no readback required for programming)
-    output wire RAD_1v8_1,
-    output wire RAD_1v8_2,
-    output wire RAD_1v8_3,
-    output wire RAD_1v8_4,
-    output wire RAD_1v8_5,
-    output wire RAD_1v8_6,
-    output wire RAD_1v8_7,
-    output wire RAD_1v8_8,
-    output wire RAD_1v8_9,
-    output wire RAD_1v8_10,
-    output wire RAD_1v8_11,
-    output wire RAD_1v8_12,
-    output wire RAD_1v8_13,
-    output wire RAD_1v8_14,
-    output wire RAD_1v8_15,
-    output wire RAD_1v8_16,
-    output wire DIN_1v8_1,
-    output wire DIN_1v8_2,
-    output wire DIN_1v8_3,
-    output wire DIN_1v8_4,
-    output wire DIN_1v8_5,
-    output wire DIN_1v8_6,
-    output wire DIN_1v8_7,
-    output wire DIN_1v8_8,
-    output wire DIN_1v8_9,
-    output wire DIN_1v8_10,
-    output wire DIN_1v8_11,
-    output wire DIN_1v8_12,
-    output wire DIN_1v8_13,
-    output wire DIN_1v8_14,
-    output wire DIN_1v8_15,
-    output wire DIN_1v8_16,
-    output wire ADDIN_1v8,
-    output wire ADVLD_1v8,
-    output wire DVLD_1v8,
-    output wire DMX2_1v8,
-    output wire RDEN_1v8,
-    output wire WRIEN_1v8,
-    output wire VSAEN_1v8,
-    output wire REFWWL_1v8,
-    output wire CLK_chip_1v8,
-    // parallel/serial control signals
-    output wire CINH_ps_1v8,
-    output wire SR_ps_1v8,
-    output wire CLK_ps_1v8,
-    output wire CLRb_spw_1v8,
-    output wire CLK_spw_1v8,
-    output wire CLRb_spr_1v8,
-    output wire CLK_spr_1v8,
-    output wire LIMSEL0_1v8,
-    output wire LIMSEL1_1v8,
-    output wire LIMIN_1v8_1,
-    output wire LIMIN_1v8_2,
-    output wire LIMIN_1v8_3,
-    output wire LIMIN_1v8_4,
-    output wire LIMIN_1v8_5,
-    output wire LIMIN_1v8_6,
-    output wire LIMIN_1v8_7,
-    output wire LIMIN_1v8_8,
-    output wire LIMIN_1v8_9,
-    output wire LIMIN_1v8_10,
-    output wire LIMIN_1v8_11,
-    output wire LIMIN_1v8_12,
-    output wire LIMIN_1v8_13,
-    output wire LIMIN_1v8_14,
-    output wire LIMIN_1v8_15,
-    output wire LIMIN_1v8_16
+    input  wire        CLK,
+    input  wire        RSTn,
+    input  wire        START,
+    output reg         DONE,
+    // signals driving the external DRAM controller
+    output wire        IO_EN,
+    output wire [5:0]  ADDR,
+    output wire [63:0] WBL_DATA1,
+    output wire [63:0] WBL_DATA2,
+    output wire [63:0] WBL_DATA3,
+    output wire [63:0] WBL_DATA4,
+    output wire [63:0] WBL_DATA5,
+    output wire [63:0] WBL_DATA6,
+    output wire [63:0] WBL_DATA7,
+    output wire [63:0] WBL_DATA8,
+    output wire [63:0] WBL_DATA9,
+    output wire [63:0] WBL_DATA10,
+    output wire [63:0] WBL_DATA11,
+    output wire [63:0] WBL_DATA12,
+    output wire [63:0] WBL_DATA13,
+    output wire [63:0] WBL_DATA14,
+    output wire [63:0] WBL_DATA15,
+    output wire [63:0] WBL_DATA16
 );
 
     // ------------------------------------------------------------------
@@ -202,104 +153,27 @@ module DRAM_Key_Sbox_Init (
     end
 
     // ------------------------------------------------------------------
-    // DRAM controller instance in write mode
+    // Drive outputs toward the external DRAM controller
     // ------------------------------------------------------------------
-    wire [16:1] dram_din;
-    wire [16:1] dram_rad;
-    wire [16:1] dram_lim;
-    wire [1:0]  lim_sel;
-    wire        add_in_w, add_vld_w, data_vld_w, clk_out_w;
-    wire        wri_en_w, rd_en_w, vsaen_w, ref_wwl_w, dmx2_w;
-    wire [2:0]  pc_data_w;
-    wire [1:0]  pc_d_in_w;
-    wire [1:0]  pc_r_ad_w;
+    assign IO_EN = io_en;
+    assign ADDR  = addr;
 
-    DRAM_write_read_16core u_dram (
-        .clk          (CLK),
-        .rst_n        (RSTn),
-        .IO_EN        (io_en),
-        .IO_MODEL     (2'b01), // write mode
-        .CIM_model    (2'b00),
-        .DATA_IN      (16'b0),
-        .WBL_DATA_IN1 (wbl_data[0]),   .WBL_DATA_IN2 (wbl_data[1]),
-        .WBL_DATA_IN3 (wbl_data[2]),   .WBL_DATA_IN4 (wbl_data[3]),
-        .WBL_DATA_IN5 (wbl_data[4]),   .WBL_DATA_IN6 (wbl_data[5]),
-        .WBL_DATA_IN7 (wbl_data[6]),   .WBL_DATA_IN8 (wbl_data[7]),
-        .WBL_DATA_IN9 (wbl_data[8]),   .WBL_DATA_IN10(wbl_data[9]),
-        .WBL_DATA_IN11(wbl_data[10]),  .WBL_DATA_IN12(wbl_data[11]),
-        .WBL_DATA_IN13(wbl_data[12]),  .WBL_DATA_IN14(wbl_data[13]),
-        .WBL_DATA_IN15(wbl_data[14]),  .WBL_DATA_IN16(wbl_data[15]),
-        .WWL_ADD      (addr),
-        .RWL_DEC_ADD1 (6'd0), .RWL_DEC_ADD2 (6'd0),
-        .RWL_DEC_ADD3 (6'd0), .RWL_DEC_ADD4 (6'd0),
-        .RWL_DEC_ADD5 (6'd0), .RWL_DEC_ADD6 (6'd0),
-        .RWL_DEC_ADD7 (6'd0), .RWL_DEC_ADD8 (6'd0),
-        .RWL_DEC_ADD9 (6'd0), .RWL_DEC_ADD10(6'd0),
-        .RWL_DEC_ADD11(6'd0), .RWL_DEC_ADD12(6'd0),
-        .RWL_DEC_ADD13(6'd0), .RWL_DEC_ADD14(6'd0),
-        .RWL_DEC_ADD15(6'd0), .RWL_DEC_ADD16(6'd0),
-        .DEMUX_ADD1   (2'd0), .DEMUX_ADD2   (2'd0),
-        .DEMUX_ADD3   (2'd0), .DEMUX_ADD4   (2'd0),
-        .DEMUX_ADD5   (2'd0), .DEMUX_ADD6   (2'd0),
-        .DEMUX_ADD7   (2'd0), .DEMUX_ADD8   (2'd0),
-        .DEMUX_ADD9   (2'd0), .DEMUX_ADD10  (2'd0),
-        .DEMUX_ADD11  (2'd0), .DEMUX_ADD12  (2'd0),
-        .DEMUX_ADD13  (2'd0), .DEMUX_ADD14  (2'd0),
-        .DEMUX_ADD15  (2'd0), .DEMUX_ADD16  (2'd0),
-        .DEMUX_ADD_3  (1'b0),
-        .DRAM_DATA_OUT(),
-        .RD_DONE      (),
-        .DRAM16_data  (16'b0),
-        .PC_data      (pc_data_w),
-        .ADD_IN       (add_in_w),
-        .ADD_VALID_IN (add_vld_w),
-        .PC_D_IN      (pc_d_in_w),
-        .D_IN         (dram_din),
-        .DATA_VALID_IN(data_vld_w),
-        .clk_out      (clk_out_w),
-        .WRI_EN       (wri_en_w),
-        .R_AD         (dram_rad),
-        .PC_R_AD      (pc_r_ad_w),
-        .LIM_IN       (dram_lim),
-        .LIM_SEL      (lim_sel),
-        .DE_ADD3      (dmx2_w),
-        .RD_EN        (rd_en_w),
-        .VSAEN        (vsaen_w),
-        .REF_WWL      (ref_wwl_w)
-    );
-
-    // ------------------------------------------------------------------
-    // Map controller outputs to top-level pins
-    // ------------------------------------------------------------------
-    assign ADDIN_1v8   = add_in_w;
-    assign ADVLD_1v8   = add_vld_w;
-    assign DVLD_1v8    = data_vld_w;
-    assign CLK_chip_1v8 = clk_out_w;
-    assign WRIEN_1v8   = wri_en_w;
-    assign RDEN_1v8    = rd_en_w;
-    assign VSAEN_1v8   = vsaen_w;
-    assign REFWWL_1v8  = ref_wwl_w;
-    assign DMX2_1v8    = dmx2_w;
-    assign LIMSEL0_1v8 = lim_sel[0];
-    assign LIMSEL1_1v8 = lim_sel[1];
-    assign {CINH_ps_1v8, SR_ps_1v8, CLK_ps_1v8} = pc_data_w;
-    assign {CLRb_spw_1v8, CLK_spw_1v8}          = pc_d_in_w;
-    assign {CLRb_spr_1v8, CLK_spr_1v8}          = pc_r_ad_w;
-
-    assign {RAD_1v8_16, RAD_1v8_15, RAD_1v8_14, RAD_1v8_13,
-            RAD_1v8_12, RAD_1v8_11, RAD_1v8_10, RAD_1v8_9,
-            RAD_1v8_8,  RAD_1v8_7,  RAD_1v8_6,  RAD_1v8_5,
-            RAD_1v8_4,  RAD_1v8_3,  RAD_1v8_2,  RAD_1v8_1} = dram_rad;
-
-    assign {DIN_1v8_16, DIN_1v8_15, DIN_1v8_14, DIN_1v8_13,
-            DIN_1v8_12, DIN_1v8_11, DIN_1v8_10, DIN_1v8_9,
-            DIN_1v8_8,  DIN_1v8_7,  DIN_1v8_6,  DIN_1v8_5,
-            DIN_1v8_4,  DIN_1v8_3,  DIN_1v8_2,  DIN_1v8_1} = dram_din;
-
-    assign {LIMIN_1v8_16, LIMIN_1v8_15, LIMIN_1v8_14, LIMIN_1v8_13,
-            LIMIN_1v8_12, LIMIN_1v8_11, LIMIN_1v8_10, LIMIN_1v8_9,
-            LIMIN_1v8_8,  LIMIN_1v8_7,  LIMIN_1v8_6,  LIMIN_1v8_5,
-            LIMIN_1v8_4,  LIMIN_1v8_3,  LIMIN_1v8_2,  LIMIN_1v8_1} = dram_lim;
+    assign WBL_DATA1  = wbl_data[0];
+    assign WBL_DATA2  = wbl_data[1];
+    assign WBL_DATA3  = wbl_data[2];
+    assign WBL_DATA4  = wbl_data[3];
+    assign WBL_DATA5  = wbl_data[4];
+    assign WBL_DATA6  = wbl_data[5];
+    assign WBL_DATA7  = wbl_data[6];
+    assign WBL_DATA8  = wbl_data[7];
+    assign WBL_DATA9  = wbl_data[8];
+    assign WBL_DATA10 = wbl_data[9];
+    assign WBL_DATA11 = wbl_data[10];
+    assign WBL_DATA12 = wbl_data[11];
+    assign WBL_DATA13 = wbl_data[12];
+    assign WBL_DATA14 = wbl_data[13];
+    assign WBL_DATA15 = wbl_data[14];
+    assign WBL_DATA16 = wbl_data[15];
 
 endmodule
 

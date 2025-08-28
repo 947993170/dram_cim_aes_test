@@ -139,7 +139,12 @@ module AES_DRAM_Top(
     wire [1:0]  aes_pc_d_in_w;
     wire [1:0]  aes_pc_r_ad_w;
 
-    // Wires from key/SBOX initialization module
+    // Wires for key/SBOX initialization generator
+    wire        init_io_en;
+    wire [5:0]  init_addr;
+    wire [63:0] init_wbl_data [0:15];
+
+    // Wires from initialization DRAM controller
     wire [16:1] init_dram_din;
     wire [16:1] init_dram_rad;
     wire [16:1] init_dram_lim;
@@ -153,6 +158,9 @@ module AES_DRAM_Top(
     wire        init_vsaen_w;
     wire        init_ref_wwl_w;
     wire        init_dmx2_w;
+    wire [2:0]  init_pc_data_w;
+    wire [1:0]  init_pc_d_in_w;
+    wire [1:0]  init_pc_r_ad_w;
     wire        init_cinh_ps_1v8;
     wire        init_sr_ps_1v8;
     wire        init_clk_ps_1v8;
@@ -260,55 +268,82 @@ module AES_DRAM_Top(
         .REF_WWL      (aes_ref_wwl_w)
     );
 
-    // Initialization module to program DRAM with round keys and SBOX
+    // Initialization data generator for round keys and SBOX
     DRAM_Key_Sbox_Init u_init (
-        .CLK        (CLK),
-        .RSTn       (RSTn),
-        .START      (INIT),
-        .DONE       (init_done),
-        .RAD_1v8_1  (init_dram_rad[1]),  .RAD_1v8_2  (init_dram_rad[2]),
-        .RAD_1v8_3  (init_dram_rad[3]),  .RAD_1v8_4  (init_dram_rad[4]),
-        .RAD_1v8_5  (init_dram_rad[5]),  .RAD_1v8_6  (init_dram_rad[6]),
-        .RAD_1v8_7  (init_dram_rad[7]),  .RAD_1v8_8  (init_dram_rad[8]),
-        .RAD_1v8_9  (init_dram_rad[9]),  .RAD_1v8_10 (init_dram_rad[10]),
-        .RAD_1v8_11 (init_dram_rad[11]), .RAD_1v8_12 (init_dram_rad[12]),
-        .RAD_1v8_13 (init_dram_rad[13]), .RAD_1v8_14 (init_dram_rad[14]),
-        .RAD_1v8_15 (init_dram_rad[15]), .RAD_1v8_16 (init_dram_rad[16]),
-        .DIN_1v8_1  (init_dram_din[1]),  .DIN_1v8_2  (init_dram_din[2]),
-        .DIN_1v8_3  (init_dram_din[3]),  .DIN_1v8_4  (init_dram_din[4]),
-        .DIN_1v8_5  (init_dram_din[5]),  .DIN_1v8_6  (init_dram_din[6]),
-        .DIN_1v8_7  (init_dram_din[7]),  .DIN_1v8_8  (init_dram_din[8]),
-        .DIN_1v8_9  (init_dram_din[9]),  .DIN_1v8_10 (init_dram_din[10]),
-        .DIN_1v8_11 (init_dram_din[11]), .DIN_1v8_12 (init_dram_din[12]),
-        .DIN_1v8_13 (init_dram_din[13]), .DIN_1v8_14 (init_dram_din[14]),
-        .DIN_1v8_15 (init_dram_din[15]), .DIN_1v8_16 (init_dram_din[16]),
-        .ADDIN_1v8  (init_add_in_w),
-        .ADVLD_1v8  (init_add_vld_w),
-        .DVLD_1v8   (init_data_vld_w),
-        .DMX2_1v8   (init_dmx2_w),
-        .RDEN_1v8   (init_rd_en_w),
-        .WRIEN_1v8  (init_wri_en_w),
-        .VSAEN_1v8  (init_vsaen_w),
-        .REFWWL_1v8 (init_ref_wwl_w),
-        .CLK_chip_1v8(init_clk_out_w),
-        .CINH_ps_1v8(init_cinh_ps_1v8),
-        .SR_ps_1v8  (init_sr_ps_1v8),
-        .CLK_ps_1v8 (init_clk_ps_1v8),
-        .CLRb_spw_1v8(init_clrb_spw_1v8),
-        .CLK_spw_1v8(init_clk_spw_1v8),
-        .CLRb_spr_1v8(init_clrb_spr_1v8),
-        .CLK_spr_1v8(init_clk_spr_1v8),
-        .LIMSEL0_1v8(init_lim_sel[0]),
-        .LIMSEL1_1v8(init_lim_sel[1]),
-        .LIMIN_1v8_1 (init_dram_lim[1]),  .LIMIN_1v8_2 (init_dram_lim[2]),
-        .LIMIN_1v8_3 (init_dram_lim[3]),  .LIMIN_1v8_4 (init_dram_lim[4]),
-        .LIMIN_1v8_5 (init_dram_lim[5]),  .LIMIN_1v8_6 (init_dram_lim[6]),
-        .LIMIN_1v8_7 (init_dram_lim[7]),  .LIMIN_1v8_8 (init_dram_lim[8]),
-        .LIMIN_1v8_9 (init_dram_lim[9]),  .LIMIN_1v8_10(init_dram_lim[10]),
-        .LIMIN_1v8_11(init_dram_lim[11]), .LIMIN_1v8_12(init_dram_lim[12]),
-        .LIMIN_1v8_13(init_dram_lim[13]), .LIMIN_1v8_14(init_dram_lim[14]),
-        .LIMIN_1v8_15(init_dram_lim[15]), .LIMIN_1v8_16(init_dram_lim[16])
+        .CLK       (CLK),
+        .RSTn      (RSTn),
+        .START     (INIT),
+        .DONE      (init_done),
+        .IO_EN     (init_io_en),
+        .ADDR      (init_addr),
+        .WBL_DATA1 (init_wbl_data[0]),  .WBL_DATA2 (init_wbl_data[1]),
+        .WBL_DATA3 (init_wbl_data[2]),  .WBL_DATA4 (init_wbl_data[3]),
+        .WBL_DATA5 (init_wbl_data[4]),  .WBL_DATA6 (init_wbl_data[5]),
+        .WBL_DATA7 (init_wbl_data[6]),  .WBL_DATA8 (init_wbl_data[7]),
+        .WBL_DATA9 (init_wbl_data[8]),  .WBL_DATA10(init_wbl_data[9]),
+        .WBL_DATA11(init_wbl_data[10]), .WBL_DATA12(init_wbl_data[11]),
+        .WBL_DATA13(init_wbl_data[12]), .WBL_DATA14(init_wbl_data[13]),
+        .WBL_DATA15(init_wbl_data[14]), .WBL_DATA16(init_wbl_data[15])
     );
+
+    // DRAM controller instance used during initialization (write mode)
+    DRAM_write_read_16core u_dram_init (
+        .clk          (CLK),
+        .rst_n        (RSTn),
+        .IO_EN        (init_io_en),
+        .IO_MODEL     (2'b01), // write mode
+        .CIM_model    (2'b00),
+        .DATA_IN      (16'b0),
+        .WBL_DATA_IN1 (init_wbl_data[0]),   .WBL_DATA_IN2 (init_wbl_data[1]),
+        .WBL_DATA_IN3 (init_wbl_data[2]),   .WBL_DATA_IN4 (init_wbl_data[3]),
+        .WBL_DATA_IN5 (init_wbl_data[4]),   .WBL_DATA_IN6 (init_wbl_data[5]),
+        .WBL_DATA_IN7 (init_wbl_data[6]),   .WBL_DATA_IN8 (init_wbl_data[7]),
+        .WBL_DATA_IN9 (init_wbl_data[8]),   .WBL_DATA_IN10(init_wbl_data[9]),
+        .WBL_DATA_IN11(init_wbl_data[10]),  .WBL_DATA_IN12(init_wbl_data[11]),
+        .WBL_DATA_IN13(init_wbl_data[12]),  .WBL_DATA_IN14(init_wbl_data[13]),
+        .WBL_DATA_IN15(init_wbl_data[14]),  .WBL_DATA_IN16(init_wbl_data[15]),
+        .WWL_ADD      (init_addr),
+        .RWL_DEC_ADD1 (6'd0), .RWL_DEC_ADD2 (6'd0),
+        .RWL_DEC_ADD3 (6'd0), .RWL_DEC_ADD4 (6'd0),
+        .RWL_DEC_ADD5 (6'd0), .RWL_DEC_ADD6 (6'd0),
+        .RWL_DEC_ADD7 (6'd0), .RWL_DEC_ADD8 (6'd0),
+        .RWL_DEC_ADD9 (6'd0), .RWL_DEC_ADD10(6'd0),
+        .RWL_DEC_ADD11(6'd0), .RWL_DEC_ADD12(6'd0),
+        .RWL_DEC_ADD13(6'd0), .RWL_DEC_ADD14(6'd0),
+        .RWL_DEC_ADD15(6'd0), .RWL_DEC_ADD16(6'd0),
+        .DEMUX_ADD1   (2'd0), .DEMUX_ADD2   (2'd0),
+        .DEMUX_ADD3   (2'd0), .DEMUX_ADD4   (2'd0),
+        .DEMUX_ADD5   (2'd0), .DEMUX_ADD6   (2'd0),
+        .DEMUX_ADD7   (2'd0), .DEMUX_ADD8   (2'd0),
+        .DEMUX_ADD9   (2'd0), .DEMUX_ADD10  (2'd0),
+        .DEMUX_ADD11  (2'd0), .DEMUX_ADD12  (2'd0),
+        .DEMUX_ADD13  (2'd0), .DEMUX_ADD14  (2'd0),
+        .DEMUX_ADD15  (2'd0), .DEMUX_ADD16  (2'd0),
+        .DEMUX_ADD_3  (1'b0),
+        .DRAM_DATA_OUT(),
+        .RD_DONE      (),
+        .DRAM16_data  (16'b0),
+        .PC_data      (init_pc_data_w),
+        .ADD_IN       (init_add_in_w),
+        .ADD_VALID_IN (init_add_vld_w),
+        .PC_D_IN      (init_pc_d_in_w),
+        .D_IN         (init_dram_din),
+        .DATA_VALID_IN(init_data_vld_w),
+        .clk_out      (init_clk_out_w),
+        .WRI_EN       (init_wri_en_w),
+        .R_AD         (init_dram_rad),
+        .PC_R_AD      (init_pc_r_ad_w),
+        .LIM_IN       (init_dram_lim),
+        .LIM_SEL      (init_lim_sel),
+        .DE_ADD3      (init_dmx2_w),
+        .RD_EN        (init_rd_en_w),
+        .VSAEN        (init_vsaen_w),
+        .REF_WWL      (init_ref_wwl_w)
+    );
+
+    assign {init_cinh_ps_1v8, init_sr_ps_1v8, init_clk_ps_1v8} = init_pc_data_w;
+    assign {init_clrb_spw_1v8, init_clk_spw_1v8} = init_pc_d_in_w;
+    assign {init_clrb_spr_1v8, init_clk_spr_1v8} = init_pc_r_ad_w;
 
     // Select between initialization and normal AES operation
     wire init_active = ~init_done;
