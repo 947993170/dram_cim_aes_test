@@ -2,6 +2,8 @@
 // controller.  External interface follows the naming and timing
 // convention described in the specification table and waveform.
 module AES_DRAM_Top(
+    input  wire         CLK,
+    input  wire         RSTn,
     input  wire         CLK_spw_1v8,
     input  wire         CLRb_spw_1v8,
     input  wire         EN,
@@ -67,6 +69,14 @@ module AES_DRAM_Top(
     output wire         VSAEN_1v8,
     output wire         REFWWL_1v8,
     output wire         CLK_chip_1v8,
+    // parallel/serial control signals
+    output wire         CINH_ps_1v8,
+    output wire         SR_ps_1v8,
+    output wire         CLK_ps_1v8,
+    output wire         CLRb_spw_1v8,
+    output wire         CLK_spw_1v8,
+    output wire         CLRb_spr_1v8,
+    output wire         CLK_spr_1v8,
     output wire         LIMSEL0_1v8,
     output wire         LIMSEL1_1v8,
     output wire         LIMIN_1v8_1,
@@ -92,6 +102,7 @@ module AES_DRAM_Top(
     output wire         BSY,
     output wire         Trigger
 );
+
     // Internal aliases for renamed ports
     wire CLK  = CLK_spw_1v8;
     wire RSTn = CLRb_spw_1v8;
@@ -123,6 +134,10 @@ module AES_DRAM_Top(
     wire        vsaen_w;
     wire        ref_wwl_w;
     wire        dmx2_w;
+    wire [2:0]  pc_data_w;
+    wire [1:0]  pc_d_in_w;
+    wire [1:0]  pc_r_ad_w;
+
 
     // ------------------------------------------------------------------
     // AES core. The DRAM output byte is broadcast to all 16 RIO inputs.
@@ -204,6 +219,11 @@ module AES_DRAM_Top(
         .DRAM_DATA_OUT(dram_byte),
         .RD_DONE      (rd_done),
         .DRAM16_data  (DRAM16_data),
+
+        .PC_data      (pc_data_w),
+        .ADD_IN       (add_in_w),
+        .ADD_VALID_IN (add_vld_w),
+        .PC_D_IN      (pc_d_in_w),
         .PC_data      (),
         .ADD_IN       (add_in_w),
         .ADD_VALID_IN (add_vld_w),
@@ -213,7 +233,10 @@ module AES_DRAM_Top(
         .clk_out      (clk_out_w),
         .WRI_EN       (wri_en_w),
         .R_AD         (dram_rad),
+
+        .PC_R_AD      (pc_r_ad_w),
         .PC_R_AD      (),
+
         .LIM_IN       (dram_lim),
         .LIM_SEL      (lim_sel),
         .DE_ADD3      (dmx2_w),
@@ -234,6 +257,11 @@ module AES_DRAM_Top(
     assign DMX2_1v8    = dmx2_w;
     assign LIMSEL0_1v8 = lim_sel[0];
     assign LIMSEL1_1v8 = lim_sel[1];
+
+    assign {CINH_ps_1v8, SR_ps_1v8, CLK_ps_1v8} = pc_data_w;
+    assign {CLRb_spw_1v8, CLK_spw_1v8}          = pc_d_in_w;
+    assign {CLRb_spr_1v8, CLK_spr_1v8}          = pc_r_ad_w;
+
 
     assign {RAD_1v8_16, RAD_1v8_15, RAD_1v8_14, RAD_1v8_13,
             RAD_1v8_12, RAD_1v8_11, RAD_1v8_10, RAD_1v8_9,
