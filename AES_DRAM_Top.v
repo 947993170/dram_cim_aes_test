@@ -300,7 +300,6 @@ module AES_DRAM_Top(
         .DRAM_DATA_OUT11(dram_byte11), DRAM_DATA_OUT12(dram_byte12),
         .DRAM_DATA_OUT13(dram_byte13), DRAM_DATA_OUT14(dram_byte14),
         .DRAM_DATA_OUT15(dram_byte15), DRAM_DATA_OUT16(dram_byte16),
-        
         .RD_DONE      (rd_done),
         .DRAM16_data  (DRAM16_data),
         .PC_data      (pc_data_w),
