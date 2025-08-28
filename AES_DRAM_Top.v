@@ -4,8 +4,6 @@
 module AES_DRAM_Top(
     input  wire         CLK,
     input  wire         RSTn,
-    input  wire         CLK_spw_1v8,
-    input  wire         CLRb_spw_1v8,
     input  wire         EN,
     input  wire         INIT,
     input  wire [127:0] Kin,
