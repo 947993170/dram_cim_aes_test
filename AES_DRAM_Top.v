@@ -186,6 +186,7 @@ module AES_DRAM_Top(
         .CLK       (CLK),
         .RSTn      (RSTn),
         .START     (INIT),
+        .wr_dnoe   (wr_done),
         .DONE      (init_done),
         .IO_EN     (init_io_en),
         .ADDR      (init_addr),
