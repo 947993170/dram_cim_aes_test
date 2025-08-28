@@ -4,6 +4,8 @@
 module AES_DRAM_Top(
     input  wire         CLK,
     input  wire         RSTn,
+    input  wire         CLK_spw_1v8,
+    input  wire         CLRb_spw_1v8,
     input  wire         EN,
     input  wire [127:0] Kin,
     input  wire [127:0] Din,
@@ -99,6 +101,11 @@ module AES_DRAM_Top(
     output wire         BSY,
     output wire         Trigger
 );
+
+    // Internal aliases for renamed ports
+    wire CLK  = CLK_spw_1v8;
+    wire RSTn = CLRb_spw_1v8;
+
     // DRAM read data bus collected from individual pins
     wire [16:1] DRAM16_data = {ROUT_1v8_16, ROUT_1v8_15, ROUT_1v8_14, ROUT_1v8_13,
                                ROUT_1v8_12, ROUT_1v8_11, ROUT_1v8_10, ROUT_1v8_9,
@@ -214,12 +221,18 @@ module AES_DRAM_Top(
         .ADD_IN       (add_in_w),
         .ADD_VALID_IN (add_vld_w),
         .PC_D_IN      (pc_d_in_w),
+        .PC_data      (),
+        .ADD_IN       (add_in_w),
+        .ADD_VALID_IN (add_vld_w),
+        .PC_D_IN      (),
         .D_IN         (dram_din),
         .DATA_VALID_IN(data_vld_w),
         .clk_out      (clk_out_w),
         .WRI_EN       (wri_en_w),
         .R_AD         (dram_rad),
         .PC_R_AD      (pc_r_ad_w),
+        .PC_R_AD      (pc_r_ad_w),
+        .PC_R_AD      (),
         .LIM_IN       (dram_lim),
         .LIM_SEL      (lim_sel),
         .DE_ADD3      (dmx2_w),
@@ -240,6 +253,7 @@ module AES_DRAM_Top(
     assign DMX2_1v8    = dmx2_w;
     assign LIMSEL0_1v8 = lim_sel[0];
     assign LIMSEL1_1v8 = lim_sel[1];
+
     assign {CINH_ps_1v8, SR_ps_1v8, CLK_ps_1v8} = pc_data_w;
     assign {CLRb_spw_1v8, CLK_spw_1v8}          = pc_d_in_w;
     assign {CLRb_spr_1v8, CLK_spr_1v8}          = pc_r_ad_w;
@@ -258,6 +272,7 @@ module AES_DRAM_Top(
             LIMIN_1v8_4,  LIMIN_1v8_3,  LIMIN_1v8_2,  LIMIN_1v8_1} = dram_lim;
 
     // output signals following the required interface naming
+
     assign Trigger = EN;
 
 endmodule
