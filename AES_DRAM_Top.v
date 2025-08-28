@@ -68,7 +68,6 @@ module AES_DRAM_Top(
     output wire         VSAEN_1v8,
     output wire         REFWWL_1v8,
     output wire         CLK_chip_1v8,
-    // parallel/serial control signals
     output wire         CINH_ps_1v8,
     output wire         SR_ps_1v8,
     output wire         CLK_ps_1v8,
@@ -287,7 +286,7 @@ module AES_DRAM_Top(
         .DEMUX_ADD13  (demux_add13),    .DEMUX_ADD14  (demux_add14),
         .DEMUX_ADD15  (demux_add15),    .DEMUX_ADD16  (demux_add16),
         .DEMUX_ADD_3  (demux_add_3),
-        .DRAM_DATA_OUT(dram_byte),
+        .DRAM_DATA_OUT1(dram_byte), DRAM_DATA_OUT2(dram_byte),
         .RD_DONE      (rd_done),
         .DRAM16_data  (DRAM16_data),
         .PC_data      (pc_data_w),
