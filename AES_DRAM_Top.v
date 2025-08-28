@@ -98,7 +98,6 @@ module AES_DRAM_Top(
     output wire         Kvld,
     output wire         Dvld,
     output wire         BSY,
-    output wire         InitDone,
     output wire         Trigger
 );
 
@@ -344,7 +343,6 @@ module AES_DRAM_Top(
 
     // output signals following the required interface naming
 
-    assign InitDone = init_done;
     assign Trigger  = EN && init_done;
 
 endmodule
