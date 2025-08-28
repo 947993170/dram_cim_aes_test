@@ -74,10 +74,11 @@ module DRAM_Key_Sbox_Init (
                WRITE_SBOX = 2'd2,
                FINISHED   = 2'd3;
 
-    reg [1:0]  state;
-    reg [7:0]  index;
-    reg [5:0]  addr;
-    reg        io_en;
+    reg [1:0]  state, state_next;
+    reg [7:0]  index, index_next;
+    reg [5:0]  addr, addr_next;
+    reg        io_en, io_en_next;
+    reg        done_next;
 
     // current 64-bit word to be written
     reg [63:0] current_word;
@@ -105,51 +106,96 @@ module DRAM_Key_Sbox_Init (
         end
     endgenerate
 
-    // FSM sequencing
+    // ------------------------------------------------------------------
+    // Moore state machine written in three-segment style
+    // ------------------------------------------------------------------
+
+    // state register
     always @(posedge CLK or negedge RSTn) begin
-        if (!RSTn) begin
+        if (!RSTn)
             state <= IDLE;
+        else
+            state <= state_next;
+    end
+
+    // next state logic
+    always @(*) begin
+        case (state)
+            IDLE:       state_next = START ? WRITE_KEYS : IDLE;
+            WRITE_KEYS: state_next = (index == 8'd21) ? WRITE_SBOX : WRITE_KEYS;
+            WRITE_SBOX: state_next = (index == 8'd31) ? FINISHED   : WRITE_SBOX;
+            FINISHED:   state_next = FINISHED;
+            default:    state_next = IDLE;
+        endcase
+    end
+
+    // index register
+    always @(posedge CLK or negedge RSTn) begin
+        if (!RSTn)
             index <= 8'd0;
-            addr  <= 6'd0;
+        else
+            index <= index_next;
+    end
+
+    // next index logic
+    always @(*) begin
+        case (state)
+            IDLE:       index_next = 8'd0;
+            WRITE_KEYS: index_next = (index == 8'd21) ? 8'd0      : index + 1'b1;
+            WRITE_SBOX: index_next = (index == 8'd31) ? index     : index + 1'b1;
+            default:    index_next = index;
+        endcase
+    end
+
+    // address register
+    always @(posedge CLK or negedge RSTn) begin
+        if (!RSTn)
+            addr <= 6'd0;
+        else
+            addr <= addr_next;
+    end
+
+    // next address logic
+    always @(*) begin
+        case (state)
+            IDLE:       addr_next = 6'd0;
+            WRITE_KEYS: addr_next = addr + 1'b1;
+            WRITE_SBOX: addr_next = (index == 8'd31) ? addr : addr + 1'b1;
+            default:    addr_next = addr;
+        endcase
+    end
+
+    // IO_EN register
+    always @(posedge CLK or negedge RSTn) begin
+        if (!RSTn)
             io_en <= 1'b0;
-            DONE  <= 1'b0;
-        end else begin
-            case (state)
-                IDLE: begin
-                    io_en <= 1'b0;
-                    DONE  <= 1'b0;
-                    if (START) begin
-                        state <= WRITE_KEYS;
-                        index <= 0;
-                        addr  <= 0;
-                    end
-                end
-                WRITE_KEYS: begin
-                    io_en <= 1'b1;
-                    if (index == 8'd21) begin // 11 keys * 2 words - 1
-                        state <= WRITE_SBOX;
-                        index <= 0;
-                        addr  <= addr + 1'b1;
-                    end else begin
-                        index <= index + 1'b1;
-                        addr  <= addr + 1'b1;
-                    end
-                end
-                WRITE_SBOX: begin
-                    io_en <= 1'b1;
-                    if (index == 8'd31) begin // 256 bytes /8 -1
-                        state <= FINISHED;
-                    end else begin
-                        index <= index + 1'b1;
-                        addr  <= addr + 1'b1;
-                    end
-                end
-                FINISHED: begin
-                    io_en <= 1'b0;
-                    DONE  <= 1'b1;
-                end
-            endcase
-        end
+        else
+            io_en <= io_en_next;
+    end
+
+    // IO_EN next logic
+    always @(*) begin
+        case (state)
+            WRITE_KEYS,
+            WRITE_SBOX: io_en_next = 1'b1;
+            default:    io_en_next = 1'b0;
+        endcase
+    end
+
+    // DONE register
+    always @(posedge CLK or negedge RSTn) begin
+        if (!RSTn)
+            DONE <= 1'b0;
+        else
+            DONE <= done_next;
+    end
+
+    // DONE next logic
+    always @(*) begin
+        case (state)
+            FINISHED: done_next = 1'b1;
+            default:  done_next = 1'b0;
+        endcase
     end
 
     // ------------------------------------------------------------------
