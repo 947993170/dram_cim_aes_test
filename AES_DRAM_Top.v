@@ -273,6 +273,7 @@ module AES_DRAM_Top(
         .WBL_DATA_IN13(wbl_data_in13),  .WBL_DATA_IN14(wbl_data_in14),
         .WBL_DATA_IN15(wbl_data_in15),  .WBL_DATA_IN16(wbl_data_in16),
         .WWL_ADD      (wwl_add_sel),
+        .WR_DONE      (wr_done),
         .RWL_DEC_ADD1 (rwl_dec_add1),   .RWL_DEC_ADD2 (rwl_dec_add2),
         .RWL_DEC_ADD3 (rwl_dec_add3),   .RWL_DEC_ADD4 (rwl_dec_add4),
         .RWL_DEC_ADD5 (rwl_dec_add5),   .RWL_DEC_ADD6 (rwl_dec_add6),
