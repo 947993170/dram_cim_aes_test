@@ -152,7 +152,6 @@ module AES_DRAM_Top(
         .RSTn  (RSTn),
         .EN    (EN && init_done),
         .Din   (Din),
-        .Kin   (Kin),
         .KDrdy (Kdrdy),
         .RIO_00(dram_byte1), .RIO_01(dram_byte2), .RIO_02(dram_byte3), .RIO_03(dram_byte4),
         .RIO_04(dram_byte5), .RIO_05(dram_byte6), .RIO_06(dram_byte7), .RIO_07(dram_byte8),
