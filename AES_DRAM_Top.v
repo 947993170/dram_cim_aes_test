@@ -144,6 +144,12 @@ module AES_DRAM_Top(
     wire [63:0] init_wbl_data [0:15];
     wire        init_done;
 
+    clk_wiz_400m u_clk_wiz_400m(
+         .clk_400m(clk_400m),
+         .clk_100m(clk_100m),
+         .clk(CLK)
+    );
+
     // ------------------------------------------------------------------
     // AES core. The DRAM output byte is broadcast to all 16 RIO inputs.
     // Address and LIM signals produced by the AES core are forwarded to
@@ -329,11 +335,7 @@ module AES_DRAM_Top(
 
 
     
-    clk_wiz_400m u_clk_wiz_400m(
-         .clk_400m(clk_400m),
-         .clk_100m(clk_100m),
-         .clk(CLK)
-    );
+
 
     // Drive top-level outputs directly from DRAM controller
     assign ADDIN_1v8   = add_in_w;
