@@ -179,7 +179,9 @@ module AES_DRAM_Top(
         .RWL_DEC_ADD_10(rwl_add[10]), .RWL_DEC_ADD_11(rwl_add[11]),
         .RWL_DEC_ADD_12(rwl_add[12]), .RWL_DEC_ADD_13(rwl_add[13]),
         .RWL_DEC_ADD_14(rwl_add[14]), .RWL_DEC_ADD_15(rwl_add[15]),
-        .IN    (lim_in)
+        .IN    (lim_in)，
+        .SEL_AD1 (cim_mode[1]),
+        .SEL_AD0 (cim_mode[0])
     );
     // Initialization data generator for round keys and SBOX
     DRAM_Key_Sbox_Init u_init (
@@ -258,13 +260,14 @@ module AES_DRAM_Top(
     wire [1:0]  demux_add16     = init_active ? 2'd0              : demux_add[15][1:0];
     wire        demux_add_3     = init_active ? 1'b0              : demux_add[0][2];
 
+    wire [1:0] cim_mode;
     // Single DRAM controller used for both initialization and AES operation
     DRAM_write_read_16core u_dram (
         .clk          (CLK),
         .rst_n        (RSTn),
         .IO_EN        (io_en_sel),
         .IO_MODEL     (io_model_sel),
-        .CIM_model    (2'b01),
+        .CIM_model    (cim_mode),
         .DATA_IN      (data_in_sel),
         .WBL_DATA_IN1 (wbl_data_in1),   .WBL_DATA_IN2 (wbl_data_in2),
         .WBL_DATA_IN3 (wbl_data_in3),   .WBL_DATA_IN4 (wbl_data_in4),
