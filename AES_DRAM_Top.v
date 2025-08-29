@@ -332,11 +332,6 @@ module AES_DRAM_Top(
         .REF_WWL      (ref_wwl_w)
     );
 
-
-
-    
-
-
     // Drive top-level outputs directly from DRAM controller
     assign ADDIN_1v8   = add_in_w;
     assign ADVLD_1v8   = add_vld_w;
