@@ -7,7 +7,12 @@ module AES_DRAM_Top(
     input  wire         EN,
     input  wire [127:0] Kin,
     input  wire [127:0] Din,
-    input  wire         Kdrdy,
+    input  wire         KDrdy,
+    output wire [127:0] Dout,
+    output wire         Dvld,
+    output wire         Kvld,
+    output wire         BSY,
+    output reg          Trigger,
     // DRAM outputs to FPGA
     input  wire         ROUT_1v8_1,
     input  wire         ROUT_1v8_2,
@@ -91,12 +96,8 @@ module AES_DRAM_Top(
     output wire         LIMIN_1v8_13,
     output wire         LIMIN_1v8_14,
     output wire         LIMIN_1v8_15,
-    output wire         LIMIN_1v8_16,
-    output wire [127:0] Dout,
-    output wire         Kvld,
-    output wire         Dvld,
-    output wire         BSY,
-    output reg          Trigger
+    output wire         LIMIN_1v8_16
+
 );
 
 
@@ -152,7 +153,7 @@ module AES_DRAM_Top(
         .RSTn  (RSTn),
         .EN    (EN && init_done),
         .Din   (Din),
-        .KDrdy (Kdrdy),
+        .KDrdy (KDrdy),
         .RIO_00(dram_byte1), .RIO_01(dram_byte2), .RIO_02(dram_byte3), .RIO_03(dram_byte4),
         .RIO_04(dram_byte5), .RIO_05(dram_byte6), .RIO_06(dram_byte7), .RIO_07(dram_byte8),
         .RIO_08(dram_byte9), .RIO_09(dram_byte10), .RIO_10(dram_byte11), .RIO_11(dram_byte12),
@@ -277,7 +278,7 @@ module AES_DRAM_Top(
         .WBL_DATA_IN13(wbl_data_in13),  .WBL_DATA_IN14(wbl_data_in14),
         .WBL_DATA_IN15(wbl_data_in15),  .WBL_DATA_IN16(wbl_data_in16),
         .WWL_ADD      (wwl_add_sel),
-        .WR_DONE      (wr_done),
+        .WT_DONE      (wr_done),
         .RWL_DEC_ADD1 (rwl_dec_add1),   .RWL_DEC_ADD2 (rwl_dec_add2),
         .RWL_DEC_ADD3 (rwl_dec_add3),   .RWL_DEC_ADD4 (rwl_dec_add4),
         .RWL_DEC_ADD5 (rwl_dec_add5),   .RWL_DEC_ADD6 (rwl_dec_add6),
@@ -295,11 +296,11 @@ module AES_DRAM_Top(
         .DEMUX_ADD13  (demux_add13),    .DEMUX_ADD14  (demux_add14),
         .DEMUX_ADD15  (demux_add15),    .DEMUX_ADD16  (demux_add16),
         .DEMUX_ADD_3  (demux_add_3),
-        .DRAM_DATA_OUT1 (dram_byte1),  .DRAM_DATA_OUT2 (dram_byte2),
-        .DRAM_DATA_OUT3 (dram_byte3),  .DRAM_DATA_OUT4 (dram_byte4),
-        .DRAM_DATA_OUT5 (dram_byte5),  .DRAM_DATA_OUT6 (dram_byte6),
-        .DRAM_DATA_OUT7 (dram_byte7),  .DRAM_DATA_OUT8 (dram_byte8),
-        .DRAM_DATA_OUT9 (dram_byte9),  .DRAM_DATA_OUT10(dram_byte10),
+        .DRAM_DATA_OUT1(dram_byte1),  .DRAM_DATA_OUT2(dram_byte2),
+        .DRAM_DATA_OUT3(dram_byte3),  .DRAM_DATA_OUT4(dram_byte4),
+        .DRAM_DATA_OUT5(dram_byte5),  .DRAM_DATA_OUT6(dram_byte6),
+        .DRAM_DATA_OUT7(dram_byte7),  .DRAM_DATA_OUT8(dram_byte8),
+        .DRAM_DATA_OUT9(dram_byte9),  .DRAM_DATA_OUT10(dram_byte10),
         .DRAM_DATA_OUT11(dram_byte11), .DRAM_DATA_OUT12(dram_byte12),
         .DRAM_DATA_OUT13(dram_byte13), .DRAM_DATA_OUT14(dram_byte14),
         .DRAM_DATA_OUT15(dram_byte15), .DRAM_DATA_OUT16(dram_byte16),
@@ -364,4 +365,3 @@ module AES_DRAM_Top(
     end
 
 endmodule
-
