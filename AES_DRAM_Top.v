@@ -186,8 +186,9 @@ module AES_DRAM_Top(
     DRAM_Key_Sbox_Init u_init (
         .CLK       (CLK),
         .RSTn      (RSTn),
+        .wr_done   (wr_done),
         .START     (EN),
-        .wr_dnoe   (wr_done),
+        .Kin       (Kin),
         .DONE      (init_done),
         .IO_EN     (init_io_en),
         .ADDR      (init_addr),
