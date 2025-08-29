@@ -99,8 +99,9 @@ module AES_DRAM_Top(
     output wire         LIMIN_1v8_16
 
 );
-
-
+    wire clk_400m;
+    wire clk_100m;
+    
     // DRAM read data bus collected from individual pins
     wire [16:1] DRAM16_data = {ROUT_1v8_16, ROUT_1v8_15, ROUT_1v8_14, ROUT_1v8_13,
                                ROUT_1v8_12, ROUT_1v8_11, ROUT_1v8_10, ROUT_1v8_9,
@@ -149,7 +150,7 @@ module AES_DRAM_Top(
     // the DRAM controller.
     // ------------------------------------------------------------------
     StdAES_Optimized u_aes (
-        .CLK   (CLK),
+        .CLK   (clk_100m),
         .RSTn  (RSTn),
         .EN    (EN && init_done),
         .Din   (Din),
@@ -184,7 +185,7 @@ module AES_DRAM_Top(
     );
     // Initialization data generator for round keys and SBOX
     DRAM_Key_Sbox_Init u_init (
-        .CLK       (CLK),
+        .CLK       (clk_100m),
         .RSTn      (RSTn),
         .wr_done   (wr_done),
         .START     (EN),
@@ -263,7 +264,8 @@ module AES_DRAM_Top(
     wire [1:0] cim_mode;
     // Single DRAM controller used for both initialization and AES operation
     DRAM_write_read_16core u_dram (
-        .clk          (CLK),
+        .clk_100m     (clk_100m),
+        .clk_400m     (clk_400m),
         .rst_n        (RSTn),
         .IO_EN        (io_en_sel),
         .IO_MODEL     (io_model_sel),
@@ -322,6 +324,15 @@ module AES_DRAM_Top(
         .RD_EN        (rd_en_w),
         .VSAEN        (vsaen_w),
         .REF_WWL      (ref_wwl_w)
+    );
+
+
+
+    
+    clk_wiz_400m u_clk_wiz_400m(
+         .clk_400m(clk_400m),
+         .clk_100m(clk_100m),
+         .clk(CLK)
     );
 
     // Drive top-level outputs directly from DRAM controller
