@@ -132,22 +132,27 @@ module wbl_key_gen(
     // ------------------------------------------------------------------
     // Key expansion: generate 44 words w[0..43]
     // ------------------------------------------------------------------
-    integer i;
     reg [31:0] w[0:43];
     reg [127:0] rk[0:10];
 
-    always @* begin
+    // Local temporaries used during key expansion
+    // Declared in a named block to satisfy Verilog scoping rules.
+    always @* begin : key_expand
+        integer i;
+        reg [31:0] temp;
+
         w[0] = Kin[127:96];
         w[1] = Kin[95:64];
         w[2] = Kin[63:32];
         w[3] = Kin[31:0];
+
         for (i = 4; i < 44; i = i + 1) begin
-            reg [31:0] temp;
             temp = w[i-1];
             if (i % 4 == 0)
                 temp = sub_word(rot_word(temp)) ^ rcon(i/4);
             w[i] = w[i-4] ^ temp;
         end
+
         for (i = 0; i < 11; i = i + 1) begin
             rk[i] = {w[4*i], w[4*i+1], w[4*i+2], w[4*i+3]};
         end
@@ -218,11 +223,11 @@ module wbl_key_gen(
         reg [3:0] ig1[0:7], ig2[0:7], ig3[0:7];
         reg [9:0] seg[0:7];
         reg [7:0] byte;
+        reg [7:0] b;
         begin
             for (row = 0; row < 8; row = row + 1) begin
                 bits = 11'b0;
                 for (rnd = 0; rnd < 11; rnd = rnd + 1) begin
-                    reg [7:0] b;
                     if (even_not_odd)
                         b = even_byte(rk[rnd], row);
                     else
