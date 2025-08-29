@@ -102,47 +102,28 @@ module wbl_key_gen(
         end
     endfunction
 
-    // Rcon
-    function [31:0] rcon;
-        input [3:0] i;
-        case (i)
-            4'd1: rcon = 32'h01000000;
-            4'd2: rcon = 32'h02000000;
-            4'd3: rcon = 32'h04000000;
-            4'd4: rcon = 32'h08000000;
-            4'd5: rcon = 32'h10000000;
-            4'd6: rcon = 32'h20000000;
-            4'd7: rcon = 32'h40000000;
-            4'd8: rcon = 32'h80000000;
-            4'd9: rcon = 32'h1b000000;
-            default: rcon = 32'h36000000;
-        endcase
-    endfunction
-
-    function [31:0] rot_word;
-        input [31:0] w;
-        rot_word = {w[23:0], w[31:24]};
-    endfunction
-
-    function [31:0] sub_word;
-        input [31:0] w;
-        // Apply the AES S-box to each byte of the word without altering
-        // the byte ordering. The previous implementation rotated the bytes
-        // a second time which produced incorrect round keys.
-        sub_word = {sbox(w[31:24]), sbox(w[23:16]), sbox(w[15:8]), sbox(w[7:0])};
-    endfunction
-
     // ------------------------------------------------------------------
     // Key expansion: generate 44 words w[0..43]
     // ------------------------------------------------------------------
     reg [31:0] w[0:43];
     reg [127:0] rk[0:10];
+    reg [63:0] wbl_words[0:15];
+
+    integer i;
+    reg [31:0] temp;
+    integer idx, row, rnd, col;
+    reg        even_not_odd;
+    reg [2:0]  bit_idx;
+    reg [10:0] bits;
+    reg [3:0]  g1, g2, g3, ig1, ig2, ig3;
+    reg [9:0]  seg[0:7];
+    reg [7:0]  s0, s1, s2, s3;
+    reg [3:0]  col4;
+    reg [7:0]  byte, b;
 
     // Local temporaries used during key expansion
     // Declared in a named block to satisfy Verilog scoping rules.
     always @* begin : key_expand
-        integer i;
-        reg [31:0] temp;
 
         w[0] = Kin[127:96];
         w[1] = Kin[95:64];
@@ -151,8 +132,21 @@ module wbl_key_gen(
 
         for (i = 4; i < 44; i = i + 1) begin
             temp = w[i-1];
-            if (i % 4 == 0)
-                temp = sub_word(rot_word(temp)) ^ rcon(i/4);
+            if (i % 4 == 0) begin
+                temp = {sbox(temp[23:16]), sbox(temp[15:8]), sbox(temp[7:0]), sbox(temp[31:24])};
+                case (i/4)
+                    4'd1: temp = temp ^ 32'h01000000;
+                    4'd2: temp = temp ^ 32'h02000000;
+                    4'd3: temp = temp ^ 32'h04000000;
+                    4'd4: temp = temp ^ 32'h08000000;
+                    4'd5: temp = temp ^ 32'h10000000;
+                    4'd6: temp = temp ^ 32'h20000000;
+                    4'd7: temp = temp ^ 32'h40000000;
+                    4'd8: temp = temp ^ 32'h80000000;
+                    4'd9: temp = temp ^ 32'h1b000000;
+                    default: temp = temp ^ 32'h36000000;
+                endcase
+            end
             w[i] = w[i-4] ^ temp;
         end
 
@@ -161,122 +155,74 @@ module wbl_key_gen(
         end
     end
 
-    // helper to select even byte
-    function [7:0] even_byte;
-        input [127:0] R;
-        input [2:0] row;
-        begin
-            case (row)
-                3'd0: even_byte = R[127:120];
-                3'd1: even_byte = R[111:104];
-                3'd2: even_byte = R[95:88];
-                3'd3: even_byte = R[79:72];
-                3'd4: even_byte = R[63:56];
-                3'd5: even_byte = R[47:40];
-                3'd6: even_byte = R[31:24];
-                default: even_byte = R[15:8];
-            endcase
-        end
-    endfunction
+    // ------------------------------------------------------------------
+    // Build WBL words directly without helper functions
+    // ------------------------------------------------------------------
+    always @* begin : build_wbls
 
-    // helper to select odd byte
-    function [7:0] odd_byte;
-        input [127:0] R;
-        input [2:0] row;
-        begin
-            case (row)
-                3'd0: odd_byte = R[119:112];
-                3'd1: odd_byte = R[103:96];
-                3'd2: odd_byte = R[87:80];
-                3'd3: odd_byte = R[71:64];
-                3'd4: odd_byte = R[55:48];
-                3'd5: odd_byte = R[39:32];
-                3'd6: odd_byte = R[23:16];
-                default: odd_byte = R[7:0];
-            endcase
-        end
-    endfunction
+        // Precompute S-box values used for base segments
+        s0 = sbox(8'hc0 + addr);
+        s1 = sbox(8'h80 + addr);
+        s2 = sbox(8'h40 + addr);
+        s3 = sbox(8'h00 + addr);
 
-    // base SBOX segment for given addr and row
-    function [9:0] base_seg;
-        input [5:0] a;
-        input [2:0] row;
-        reg [7:0] s0,s1,s2,s3;
-        reg [3:0] col4;
-        integer bitindex;
-        begin
-            s0 = sbox(8'hc0 + a);
-            s1 = sbox(8'h80 + a);
-            s2 = sbox(8'h40 + a);
-            s3 = sbox(8'h00 + a);
-            bitindex = 7 - row; // row0->bit7
-            col4 = {s0[bitindex], s1[bitindex], s2[bitindex], s3[bitindex]};
-            base_seg = {4'b0000, col4, 2'b00};
-        end
-    endfunction
+        for (idx = 0; idx < 16; idx = idx + 1) begin
+            even_not_odd = (idx < 8);
+            bit_idx = 7 - (idx % 8);
 
-    // build one WBL word
-    function [63:0] build_wbl;
-        input        even_not_odd; // 1=even,0=odd
-        input [2:0]  bit_idx;      // 7..0
-        input [5:0]  a;
-        integer row, rnd, col;
-        reg [10:0] bits;
-        reg [3:0] g1[0:7], g2[0:7], g3[0:7];
-        reg [3:0] ig1[0:7], ig2[0:7], ig3[0:7];
-        reg [9:0] seg[0:7];
-        reg [7:0] byte;
-        reg [7:0] b;
-        begin
             for (row = 0; row < 8; row = row + 1) begin
                 bits = 11'b0;
                 for (rnd = 0; rnd < 11; rnd = rnd + 1) begin
                     if (even_not_odd)
-                        b = even_byte(rk[rnd], row);
+                        b = rk[rnd][127 - row*16 -: 8];
                     else
-                        b = odd_byte(rk[rnd], row);
-                    bits[10-rnd] = (b >> bit_idx) & 1'b1; // round0 -> bits[10]
+                        b = rk[rnd][119 - row*16 -: 8];
+                    bits[10-rnd] = b[bit_idx];
                 end
-                g1[row]  = {bits[10], bits[9], bits[8], bits[7]};
-                g2[row]  = {bits[6], bits[5], bits[4], bits[3]};
-                g3[row]  = {bits[2], bits[1], bits[0], 1'b0};
-                ig1[row] = ~g1[row];
-                ig2[row] = ~g2[row];
-                ig3[row] = ~g3[row];
-                seg[row] = base_seg(a, row);
-                case (a)
-                    6'd0:  seg[row][9:6] = g1[row];
-                    6'd1:  seg[row][9:6] = g2[row];
-                    6'd2:  seg[row][9:6] = g3[row];
-                    6'd32: seg[row][9:6] = ig1[row];
-                    6'd33: seg[row][9:6] = ig2[row];
-                    6'd34: seg[row][9:6] = ig3[row];
+
+                g1  = {bits[10], bits[9], bits[8], bits[7]};
+                g2  = {bits[6],  bits[5], bits[4], bits[3]};
+                g3  = {bits[2],  bits[1], bits[0], 1'b0};
+                ig1 = ~g1;
+                ig2 = ~g2;
+                ig3 = ~g3;
+
+                col4 = {s0[7-row], s1[7-row], s2[7-row], s3[7-row]};
+                seg[row] = {4'b0000, col4, 2'b00};
+                case (addr)
+                    6'd0:  seg[row][9:6] = g1;
+                    6'd1:  seg[row][9:6] = g2;
+                    6'd2:  seg[row][9:6] = g3;
+                    6'd32: seg[row][9:6] = ig1;
+                    6'd33: seg[row][9:6] = ig2;
+                    6'd34: seg[row][9:6] = ig3;
                 endcase
             end
-            build_wbl = 64'b0;
+
+            wbl_words[idx] = 64'b0;
             for (col = 0; col < 8; col = col + 1) begin
                 byte = {seg[0][9-col], seg[1][9-col], seg[2][9-col], seg[3][9-col],
                         seg[4][9-col], seg[5][9-col], seg[6][9-col], seg[7][9-col]};
-                build_wbl = (build_wbl << 8) | byte;
+                wbl_words[idx] = (wbl_words[idx] << 8) | byte;
             end
         end
-    endfunction
+    end
 
-    assign WBL1  = build_wbl(1'b1, 3'd7, addr);
-    assign WBL2  = build_wbl(1'b1, 3'd6, addr);
-    assign WBL3  = build_wbl(1'b1, 3'd5, addr);
-    assign WBL4  = build_wbl(1'b1, 3'd4, addr);
-    assign WBL5  = build_wbl(1'b1, 3'd3, addr);
-    assign WBL6  = build_wbl(1'b1, 3'd2, addr);
-    assign WBL7  = build_wbl(1'b1, 3'd1, addr);
-    assign WBL8  = build_wbl(1'b1, 3'd0, addr);
-    assign WBL9  = build_wbl(1'b0, 3'd7, addr);
-    assign WBL10 = build_wbl(1'b0, 3'd6, addr);
-    assign WBL11 = build_wbl(1'b0, 3'd5, addr);
-    assign WBL12 = build_wbl(1'b0, 3'd4, addr);
-    assign WBL13 = build_wbl(1'b0, 3'd3, addr);
-    assign WBL14 = build_wbl(1'b0, 3'd2, addr);
-    assign WBL15 = build_wbl(1'b0, 3'd1, addr);
-    assign WBL16 = build_wbl(1'b0, 3'd0, addr);
+    assign WBL1  = wbl_words[0];
+    assign WBL2  = wbl_words[1];
+    assign WBL3  = wbl_words[2];
+    assign WBL4  = wbl_words[3];
+    assign WBL5  = wbl_words[4];
+    assign WBL6  = wbl_words[5];
+    assign WBL7  = wbl_words[6];
+    assign WBL8  = wbl_words[7];
+    assign WBL9  = wbl_words[8];
+    assign WBL10 = wbl_words[9];
+    assign WBL11 = wbl_words[10];
+    assign WBL12 = wbl_words[11];
+    assign WBL13 = wbl_words[12];
+    assign WBL14 = wbl_words[13];
+    assign WBL15 = wbl_words[14];
+    assign WBL16 = wbl_words[15];
 
 endmodule
