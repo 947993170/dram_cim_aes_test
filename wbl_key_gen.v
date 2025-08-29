@@ -208,21 +208,21 @@ module wbl_key_gen(
         end
     end
 
-    assign WBL1  = wbl_words[0];
-    assign WBL2  = wbl_words[1];
-    assign WBL3  = wbl_words[2];
-    assign WBL4  = wbl_words[3];
-    assign WBL5  = wbl_words[4];
-    assign WBL6  = wbl_words[5];
-    assign WBL7  = wbl_words[6];
-    assign WBL8  = wbl_words[7];
-    assign WBL9  = wbl_words[8];
-    assign WBL10 = wbl_words[9];
-    assign WBL11 = wbl_words[10];
-    assign WBL12 = wbl_words[11];
-    assign WBL13 = wbl_words[12];
-    assign WBL14 = wbl_words[13];
-    assign WBL15 = wbl_words[14];
-    assign WBL16 = wbl_words[15];
+    assign WBL1  = wbl_words[7];
+    assign WBL2  = wbl_words[6];
+    assign WBL3  = wbl_words[5];
+    assign WBL4  = wbl_words[4];
+    assign WBL5  = wbl_words[3];
+    assign WBL6  = wbl_words[2];
+    assign WBL7  = wbl_words[1];
+    assign WBL8  = wbl_words[0];
+    assign WBL9  = wbl_words[15];
+    assign WBL10 = wbl_words[14];
+    assign WBL11 = wbl_words[13];
+    assign WBL12 = wbl_words[12];
+    assign WBL13 = wbl_words[11];
+    assign WBL14 = wbl_words[10];
+    assign WBL15 = wbl_words[9];
+    assign WBL16 = wbl_words[8];
 
 endmodule
