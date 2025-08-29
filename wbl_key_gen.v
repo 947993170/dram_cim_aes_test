@@ -126,7 +126,10 @@ module wbl_key_gen(
 
     function [31:0] sub_word;
         input [31:0] w;
-        sub_word = {sbox(w[23:16]), sbox(w[15:8]), sbox(w[7:0]), sbox(w[31:24])};
+        // Apply the AES S-box to each byte of the word without altering
+        // the byte ordering. The previous implementation rotated the bytes
+        // a second time which produced incorrect round keys.
+        sub_word = {sbox(w[31:24]), sbox(w[23:16]), sbox(w[15:8]), sbox(w[7:0])};
     endfunction
 
     // ------------------------------------------------------------------
