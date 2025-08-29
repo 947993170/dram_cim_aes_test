@@ -65,11 +65,14 @@ module StdAES_Optimized
     output wire [5:0]   RWL_DEC_ADD_14,
     output wire [5:0]   RWL_DEC_ADD_15,
 
-    output wire [15:0]  IN
+    output wire [15:0]  IN,
+    output wire         SEL_AD1,
+    output wire         SEL_AD0
+
 );
 
     // -------------------------------------------------
-    // internal regs/wires (±£ÁôÔ­ÓĞ)
+    // internal regs/wires (ä¿ç•™åŸæœ‰)
     // -------------------------------------------------
     wire        rst = ~RSTn;
 
@@ -77,11 +80,11 @@ module StdAES_Optimized
     reg [3:0]   dcnt;
     reg [1:0]   sel;
 
-    // sbox result wires (±£³Ö?? wire£¬ÏÂÃæÓÃ¼Ä´æÆ÷»Ø??)
+    // sbox result wires (ä¿æŒ?? wireï¼Œä¸‹é¢ç”¨å¯„å­˜å™¨å›??)
 
 
     // -------------------------------------------------
-    // Ô­ÓĞ Dvld/Kvld/BSY/counter/sel Âß¼­£¨Î´¸Ä¶¯??
+    // åŸæœ‰ Dvld/Kvld/BSY/counter/sel é€»è¾‘ï¼ˆæœªæ”¹åŠ¨??
     // -------------------------------------------------
     always @(posedge CLK or posedge rst) begin
         if (rst)       Dvld <= 1'b0;
@@ -114,7 +117,7 @@ module StdAES_Optimized
         .sel (sel     )
     );
 
-    // ÂÖ´Î¼ÆÊı?? sel ¿ØÖÆ
+    // è½®æ¬¡è®¡æ•°?? sel æ§åˆ¶
     always @(posedge CLK) begin
         if (rst) begin
             dcnt <= 4'd0;
@@ -170,10 +173,10 @@ module StdAES_Optimized
 	end
 
     // =================================================
-    // ÏÂÃæÊÇ£ºÈı¶ÎÊ½×´Ì¬»ú£¨¶Á¡ú²é£©Õû??
+    // ä¸‹é¢æ˜¯ï¼šä¸‰æ®µå¼çŠ¶æ€æœºï¼ˆè¯»â†’æŸ¥ï¼‰æ•´??
     // =================================================
 
-    // ?? RIO ¹æ·¶³ÉË³ĞòĞÅºÅ£¨ÈôÄã?? RIO_08/09£¬ÇëÓ³ÉäÌæ»»?? 8'h00??
+    // ?? RIO è§„èŒƒæˆé¡ºåºä¿¡å·ï¼ˆè‹¥ä½ ?? RIO_08/09ï¼Œè¯·æ˜ å°„æ›¿æ¢?? 8'h00??
     wire [7:0] rio_00 = RIO_00;
     wire [7:0] rio_01 = RIO_01;
     wire [7:0] rio_02 = RIO_02;
@@ -182,8 +185,8 @@ module StdAES_Optimized
     wire [7:0] rio_05 = RIO_05;
     wire [7:0] rio_06 = RIO_06;
     wire [7:0] rio_07 = RIO_07;
-    wire [7:0] rio_08 = RIO_08;   // TODO: Èô´æ?? RIO_08£¬Çë¸ÄÎª RIO_08
-    wire [7:0] rio_09 = RIO_09;   // TODO: Èô´æ?? RIO_09£¬Çë¸ÄÎª RIO_09
+    wire [7:0] rio_08 = RIO_08;   // TODO: è‹¥å­˜?? RIO_08ï¼Œè¯·æ”¹ä¸º RIO_08
+    wire [7:0] rio_09 = RIO_09;   // TODO: è‹¥å­˜?? RIO_09ï¼Œè¯·æ”¹ä¸º RIO_09
     wire [7:0] rio_10 = RIO_10;
     wire [7:0] rio_11 = RIO_11;
     wire [7:0] rio_12 = RIO_12;
@@ -191,11 +194,11 @@ module StdAES_Optimized
     wire [7:0] rio_14 = RIO_14;
     wire [7:0] rio_15 = RIO_15;
 
-    // FSM ²ÎÊı
+    // FSM å‚æ•°
     localparam integer NUM_GROUPS   = 11;
     localparam         IN_MSB_FIRST = 1'b1;
 
-    // ×´???±à??
+    // çŠ¶???ç¼–??
     localparam [1:0] ST_IDLE   = 2'd0;
     localparam [1:0] ST_READ   = 2'd1;  // 8 cycles
     localparam [1:0] ST_LOOKUP = 2'd2;  // 1 cycle
@@ -208,19 +211,19 @@ module StdAES_Optimized
 	reg [3:0] read_cnt_dff;   // 0..7
 
 
-    // ark ¼Ä´æÆ÷£º8 ÅÄ²É?? bit7..0
+    // ark å¯„å­˜å™¨ï¼š8 æ‹é‡‡?? bit7..0
     reg [7:0] ark_q_00, ark_q_01, ark_q_02, ark_q_03;
     reg [7:0] ark_q_04, ark_q_05, ark_q_06, ark_q_07;
     reg [7:0] ark_q_08, ark_q_09, ark_q_10, ark_q_11;
     reg [7:0] ark_q_12, ark_q_13, ark_q_14, ark_q_15;
 
-    // ²é±í½á¹û¼Ä´æ
+    // æŸ¥è¡¨ç»“æœå¯„å­˜
     reg [7:0] sbox_q_00, sbox_q_01, sbox_q_02, sbox_q_03;
     reg [7:0] sbox_q_04, sbox_q_05, sbox_q_06, sbox_q_07;
     reg [7:0] sbox_q_08, sbox_q_09, sbox_q_10, sbox_q_11;
     reg [7:0] sbox_q_12, sbox_q_13, sbox_q_14, sbox_q_15;
 
-    // µØÖ·¼Ä´æÊä³ö
+    // åœ°å€å¯„å­˜è¾“å‡º
     reg [2:0] demux_q_00, demux_q_01, demux_q_02, demux_q_03;
     reg [2:0] demux_q_04, demux_q_05, demux_q_06, demux_q_07;
     reg [2:0] demux_q_08, demux_q_09, demux_q_10, demux_q_11;
@@ -232,7 +235,7 @@ module StdAES_Optimized
     reg [5:0] rwl_q_12, rwl_q_13, rwl_q_14, rwl_q_15;
 
 
-    // group ÅäÖÃº¯Êı£¨ÎŞ initial??
+    // group é…ç½®å‡½æ•°ï¼ˆæ—  initial??
     function [2:0] get_demux_code;
         input [3:0] g;
     begin
@@ -275,7 +278,7 @@ module StdAES_Optimized
     endfunction
 
 
-    // ×´Ì¬¼Ä´æ¼°¼ÆÊı
+    // çŠ¶æ€å¯„å­˜åŠè®¡æ•°
     always @(posedge CLK or posedge rst) begin
         if (rst) begin
             current_state <= ST_IDLE;
@@ -300,7 +303,7 @@ module StdAES_Optimized
         end
     end
 
-    // ´ÎÌ¬Âß¼­
+    // æ¬¡æ€é€»è¾‘
     always @(*) begin
         next_state = ST_IDLE;
         case (current_state)
@@ -345,7 +348,7 @@ module StdAES_Optimized
 				demux_q_15 = get_demux_code(grp_idx); rwl_q_15 = get_row_code(grp_idx);
 			end
 			ST_LOOKUP: begin
-				// µØÖ· = {1'b0, ark[7:6]} & ark[5:0]
+				// åœ°å€ = {1'b0, ark[7:6]} & ark[5:0]
 				demux_q_00 = {1'b0, ark_q_00[7:6]}; rwl_q_00 = ark_q_00[5:0];
 				demux_q_01 = {1'b0, ark_q_01[7:6]}; rwl_q_01 = ark_q_01[5:0];
 				demux_q_02 = {1'b0, ark_q_02[7:6]}; rwl_q_02 = ark_q_02[5:0];
@@ -385,7 +388,7 @@ module StdAES_Optimized
 	end
 			
 
-    // Ê±ĞòÊä³öÓëÊı¾İÂ·??
+    // æ—¶åºè¾“å‡ºä¸æ•°æ®è·¯??
     always @(posedge CLK or posedge rst) begin
         if (rst) begin
             sbox_q_00 <= 8'h00; sbox_q_01 <= 8'h00; sbox_q_02 <= 8'h00; sbox_q_03 <= 8'h00;
@@ -397,7 +400,7 @@ module StdAES_Optimized
                 //ST_LOOKUP: begin
 				ST_MIX: begin
 
-                    // ¶ÁÈ¡ RIO ½á¹û
+                    // è¯»å– RIO ç»“æœ
                     sbox_q_00 <= rio_00; sbox_q_01 <= rio_01; sbox_q_02 <= rio_02; sbox_q_03 <= rio_03;
                     sbox_q_04 <= rio_04; sbox_q_05 <= rio_05; sbox_q_06 <= rio_06; sbox_q_07 <= rio_07;
                     sbox_q_08 <= rio_08; sbox_q_09 <= rio_09; sbox_q_10 <= rio_10; sbox_q_11 <= rio_11;
@@ -420,7 +423,7 @@ module StdAES_Optimized
     end
 	
 	
-	    // Ê±ĞòÊä³öÓëÊı¾İÂ·??
+	    // æ—¶åºè¾“å‡ºä¸æ•°æ®è·¯??
     always @(posedge CLK) begin
 		if (!RSTn) begin
 			ark_q_00 <= 8'h0; 
@@ -442,7 +445,7 @@ module StdAES_Optimized
 		end else begin
 			case (current_state)
 				ST_READ: begin
-					// ²ÉÑùµ±Ç°Î»Ãæ£¨bit = 7-read_cnt£©
+					// é‡‡æ ·å½“å‰ä½é¢ï¼ˆbit = 7-read_cntï¼‰
 					case (read_cnt_dff)
 						4'd0: begin
 							ark_q_00 <= {rio_07[7],rio_06[7],rio_05[7],rio_04[7],rio_03[7],rio_02[7],rio_01[7],rio_00[7]};
@@ -505,7 +508,7 @@ module StdAES_Optimized
 	
     wire [127:0] src128 = use_datnext(grp_idx) ? dat_next : Din;
 
-    // ¶Ë¿ÚÊä³ö
+    // ç«¯å£è¾“å‡º
     assign IN = ((read_cnt < 4'd8) && (current_state == ST_READ)) ? pick_2b(src128, read_cnt) : 16'h0;
 
 
@@ -525,5 +528,9 @@ module StdAES_Optimized
     assign DEMUX_ADD_13 = demux_q_13; assign RWL_DEC_ADD_13 = rwl_q_13;
     assign DEMUX_ADD_14 = demux_q_14; assign RWL_DEC_ADD_14 = rwl_q_14;
     assign DEMUX_ADD_15 = demux_q_15; assign RWL_DEC_ADD_15 = rwl_q_15;
+
+	assign SEL_AD1 = 1'b0;
+    assign SEL_AD0 = (current_state == ST_READ) ? 1'b1 :1'b0;
+
 
 endmodule
