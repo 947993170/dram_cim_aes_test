@@ -1,17 +1,20 @@
-`include "wbl_data_rom.vh"
-
-// Module to program DRAM with precomputed key/SBOX data.
-// WBL_DATA1..WBL_DATA16 stream 64-bit words derived from
-// sbox_final_continuous_even_col*.txt and
-// sbox_final_continuous_odd_col*.txt files. Each wr_done
-// pulse advances to the next word. After 64 words
-// (ADDR=6'b111111) DONE is asserted and IO_EN is deasserted.
+// Module to program DRAM with key/SBOX data.
+// The original implementation relied on a pre-computed
+// ROM (wbl_data_rom.vh).  In order to allow different keys
+// at run-time, the ROM is replaced with the behavioural
+// generator contained in wbl_key_gen.v.  Given the input
+// 128-bit key the generator performs the AES-128 key
+// expansion and recreates the bit manipulations used by the
+// software scripts.  Each wr_done pulse advances to the next
+// address.  After 64 words (ADDR=6'b111111) DONE is asserted
+// and IO_EN is deasserted.
 
 module DRAM_Key_Sbox_Init (
     input  wire        CLK,
     input  wire        RSTn,
     input  wire        wr_done,
     input  wire        START,
+    input  wire [127:0] Kin,
     output reg         DONE,
     // signals driving the external DRAM controller
     output wire        IO_EN,
@@ -35,12 +38,42 @@ module DRAM_Key_Sbox_Init (
 );
 
     // ------------------------------------------------------------------
-    // ROM data generated from sbox_final_continuous_even_col* and
-    // sbox_final_continuous_odd_col* files
+    // Dynamic data generator
     // ------------------------------------------------------------------
-    // The ROM contents are defined in the included wbl_data_rom.vh file
+    // wbl_key_gen calculates the 16 64-bit words for a given
+    // address and input key.  The words are latched locally
+    // whenever the address advances.
 
     localparam LAST_ADDR = 6'd63;
+
+    wire [63:0] gen1, gen2, gen3, gen4;
+    wire [63:0] gen5, gen6, gen7, gen8;
+    wire [63:0] gen9, gen10, gen11, gen12;
+    wire [63:0] gen13, gen14, gen15, gen16;
+
+    wire [5:0] gen_addr = (active && wr_done && addr_reg != LAST_ADDR) ?
+                          addr_reg + 6'd1 : addr_reg;
+
+    wbl_key_gen GEN (
+        .Kin  (Kin),
+        .addr (gen_addr),
+        .WBL1 (gen1),
+        .WBL2 (gen2),
+        .WBL3 (gen3),
+        .WBL4 (gen4),
+        .WBL5 (gen5),
+        .WBL6 (gen6),
+        .WBL7 (gen7),
+        .WBL8 (gen8),
+        .WBL9 (gen9),
+        .WBL10(gen10),
+        .WBL11(gen11),
+        .WBL12(gen12),
+        .WBL13(gen13),
+        .WBL14(gen14),
+        .WBL15(gen15),
+        .WBL16(gen16)
+    );
 
     reg        active;
     reg [5:0]  addr_reg;
@@ -98,22 +131,22 @@ module DRAM_Key_Sbox_Init (
                 active    <= 1'b1;
                 addr_reg  <= 6'd0;
                 DONE      <= 1'b0;
-                data1_reg  <= WBL_ROM1[0];
-                data2_reg  <= WBL_ROM2[0];
-                data3_reg  <= WBL_ROM3[0];
-                data4_reg  <= WBL_ROM4[0];
-                data5_reg  <= WBL_ROM5[0];
-                data6_reg  <= WBL_ROM6[0];
-                data7_reg  <= WBL_ROM7[0];
-                data8_reg  <= WBL_ROM8[0];
-                data9_reg  <= WBL_ROM9[0];
-                data10_reg <= WBL_ROM10[0];
-                data11_reg <= WBL_ROM11[0];
-                data12_reg <= WBL_ROM12[0];
-                data13_reg <= WBL_ROM13[0];
-                data14_reg <= WBL_ROM14[0];
-                data15_reg <= WBL_ROM15[0];
-                data16_reg <= WBL_ROM16[0];
+                data1_reg  <= gen1;
+                data2_reg  <= gen2;
+                data3_reg  <= gen3;
+                data4_reg  <= gen4;
+                data5_reg  <= gen5;
+                data6_reg  <= gen6;
+                data7_reg  <= gen7;
+                data8_reg  <= gen8;
+                data9_reg  <= gen9;
+                data10_reg <= gen10;
+                data11_reg <= gen11;
+                data12_reg <= gen12;
+                data13_reg <= gen13;
+                data14_reg <= gen14;
+                data15_reg <= gen15;
+                data16_reg <= gen16;
             end else if (active && wr_done) begin
                 if (addr_reg == LAST_ADDR) begin
                     // finished streaming all addresses
@@ -121,22 +154,22 @@ module DRAM_Key_Sbox_Init (
                     DONE   <= 1'b1;
                 end else begin
                     addr_reg  <= addr_reg + 1'b1;
-                    data1_reg  <= WBL_ROM1[addr_reg + 1'b1];
-                    data2_reg  <= WBL_ROM2[addr_reg + 1'b1];
-                    data3_reg  <= WBL_ROM3[addr_reg + 1'b1];
-                    data4_reg  <= WBL_ROM4[addr_reg + 1'b1];
-                    data5_reg  <= WBL_ROM5[addr_reg + 1'b1];
-                    data6_reg  <= WBL_ROM6[addr_reg + 1'b1];
-                    data7_reg  <= WBL_ROM7[addr_reg + 1'b1];
-                    data8_reg  <= WBL_ROM8[addr_reg + 1'b1];
-                    data9_reg  <= WBL_ROM9[addr_reg + 1'b1];
-                    data10_reg <= WBL_ROM10[addr_reg + 1'b1];
-                    data11_reg <= WBL_ROM11[addr_reg + 1'b1];
-                    data12_reg <= WBL_ROM12[addr_reg + 1'b1];
-                    data13_reg <= WBL_ROM13[addr_reg + 1'b1];
-                    data14_reg <= WBL_ROM14[addr_reg + 1'b1];
-                    data15_reg <= WBL_ROM15[addr_reg + 1'b1];
-                    data16_reg <= WBL_ROM16[addr_reg + 1'b1];
+                    data1_reg  <= gen1;
+                    data2_reg  <= gen2;
+                    data3_reg  <= gen3;
+                    data4_reg  <= gen4;
+                    data5_reg  <= gen5;
+                    data6_reg  <= gen6;
+                    data7_reg  <= gen7;
+                    data8_reg  <= gen8;
+                    data9_reg  <= gen9;
+                    data10_reg <= gen10;
+                    data11_reg <= gen11;
+                    data12_reg <= gen12;
+                    data13_reg <= gen13;
+                    data14_reg <= gen14;
+                    data15_reg <= gen15;
+                    data16_reg <= gen16;
                 end
             end
         end
