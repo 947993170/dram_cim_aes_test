@@ -1,5 +1,5 @@
 # ===== Auto-generated from J1B/J1C/J1D/J1E connector maps =====
-# Voltage domain: 1.8 V  →  LVCMOS18
+# Voltage domain: 1.8 V  鈫�  LVCMOS18
 set_property PACKAGE_PIN D26 [get_ports {CLK_spw_1v8}]
 set_property IOSTANDARD LVCMOS18 [get_ports {CLK_spw_1v8}]
 set_property PACKAGE_PIN C10 [get_ports {RAD_1v8_12}]
@@ -190,7 +190,4 @@ set_property PACKAGE_PIN K7 [get_ports {ROUT_1v8_9}]
 set_property IOSTANDARD LVCMOS18 [get_ports {ROUT_1v8_9}]
 
 # Example clock constraints (fill real periods as needed):
-# create_clock -name CLK_spw_1v8 -period 20.000 [get_ports CLK_spw_1v8]
-# create_clock -name CLK_ps_1v8 -period 20.000 [get_ports CLK_ps_1v8]
-# create_clock -name CLK_spr_1v8 -period 20.000 [get_ports CLK_spr_1v8]
-# create_clock -name CLK_chip_1v8 -period 20.000 [get_ports CLK_chip_1v8]
+create_clock -name CLK -period 10.000 [get_ports CLK]
