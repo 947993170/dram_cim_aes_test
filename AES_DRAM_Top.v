@@ -179,7 +179,7 @@ module AES_DRAM_Top(
         .RWL_DEC_ADD_10(rwl_add[10]), .RWL_DEC_ADD_11(rwl_add[11]),
         .RWL_DEC_ADD_12(rwl_add[12]), .RWL_DEC_ADD_13(rwl_add[13]),
         .RWL_DEC_ADD_14(rwl_add[14]), .RWL_DEC_ADD_15(rwl_add[15]),
-        .IN    (lim_in)，
+        .IN    (lim_in),
         .SEL_AD1 (cim_mode[1]),
         .SEL_AD0 (cim_mode[0])
     );
