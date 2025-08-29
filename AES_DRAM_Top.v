@@ -362,7 +362,7 @@ module AES_DRAM_Top(
             LIMIN_1v8_8,  LIMIN_1v8_7,  LIMIN_1v8_6,  LIMIN_1v8_5,
             LIMIN_1v8_4,  LIMIN_1v8_3,  LIMIN_1v8_2,  LIMIN_1v8_1} = dram_lim_w;
 
-    always @ (posedge CLK) begin
+    always @ (posedge clk_100m) begin
         if (!RSTn) begin
             Trigger <= 1'b0;
         end else if (Dvld) begin
