@@ -21,7 +21,8 @@
 // 
 
 module DRAM_write_read_16core(
-    input wire clk,
+    input wire clk_100m,
+    input wire clk_400m,
     input wire rst_n,
     // 使能读写
     input IO_EN, 
@@ -50,7 +51,6 @@ module DRAM_write_read_16core(
     // 输入数据地址
     // 写地址16块一致
     input wire [5:0] WWL_ADD,
-    output wire wr_done,
     // 读出地址 16块暂不共用
     input wire [5:0]RWL_DEC_ADD1,
     input wire [5:0]RWL_DEC_ADD2,
@@ -102,59 +102,277 @@ module DRAM_write_read_16core(
     output reg [7:0] DRAM_DATA_OUT15,
     output reg [7:0] DRAM_DATA_OUT16,
     output reg RD_DONE, // DRAM_DATA_OUT done信号
+    output reg WT_DONE, // DRAM写入完成done信号
     // DRAM_IO
     // IO数据DRAM➡FPGA
     // input wire [8:1] DRAM_data, // 单芯片
     input wire [16:1] DRAM16_data, // 16块芯片通过并转串输出
-    output reg [2:0]PC_data,      /// PC并转串控制信号 
+    output wire [2:0]PC_data,      /// PC并转串控制信号 PC[0]=clk PC[1]=SR/LD# PC[2]=CLK_INV
     // IO控制FPGA➡DRAM
     output reg ADD_IN,            // ADD_IN // WWL_ADD 输入 自带CP 1 to 6
     output reg ADD_VALID_IN,      // A_VALID// WWL_ADD_VALID 输入地址使能
-    output reg [1:0]PC_D_IN,      /// D_IN 的串转并控制信号
+    output reg [1:0]PC_D_IN,      /// D_IN 的串转并控制信号 PC_D_IN[1]为rst_n  PC_D_IN[0]为移位时钟
     output reg [16:1]D_IN,        /// D_IN[1:16] // 16块芯片的DATA_I
     output reg DATA_VALID_IN,     // D_VALIDv// WBL 输入数据使能
-    output reg clk_out,           // 相当于带使能的100MHz时钟
+    output wire clk_out,           // 相当于带使能的100MHz时钟
     output reg WRI_EN,            // WRI_EN 写使能
     output reg [16:1]R_AD,        ///R_AD 读/算地址 串转并后高两位是DE_ADD0 1
     output reg [1:0]PC_R_AD,      ///R_AD 的串转并控制信号
     output wire [16:1]LIM_IN,     /// LIM输入 16块芯片的算输入数据
     output wire [1:0] LIM_SEL,    /// LIM_SEL 存算模式选择
-    output reg DE_ADD3,           /// DE_ADD3
+    output wire DE_ADD3,           /// DE_ADD3
     output wire RD_EN,         // 读使能 RWL_EN
     output wire VSAEN,
     output reg REF_WWL
     );
-
-    wire [7:0] DRAM_DATA_OUT;
     // generate clock
-    wire clk_400m;
-    clk_wiz_400m u_clk_wiz_400m(
-        .clk_400m(clk_400m),
-        .clk(clk)
-    );
+    // wire clk_400m;
+    // wire clk_100m;
+    // clk_wiz_400m u_clk_wiz_400m(
+    //     .clk_400m(clk_400m),
+    //     .clk_100m(clk_100m),
+    //     .clk(clk)
+    // );
     //
-    reg IO_EN_FLAG; // stay 1 while working
-    (*dont_touch="yes"*)reg [6:0]  counter_work;
-    //
-    always @ (posedge clk_400m or negedge rst_n) begin
-        if(!rst_n)begin 
-            IO_EN_FLAG<=1'b0;
+    
+
+    
+    // 100Mhz时钟下输入寄存
+    reg [1:0]       IO_MODEL_nr1     ;    // 01写, 10读
+    reg [1:0]      CIM_model_nr1    ;    // 存算模式选择
+    reg [16:1]       DATA_IN_nr1      ;    // LIM_IN, LIM输入 16块芯片的算输入数据
+    reg [63:0]  WBL_DATA_IN1_nr1 ;
+    reg [63:0]  WBL_DATA_IN2_nr1 ;
+    reg [63:0]  WBL_DATA_IN3_nr1 ;
+    reg [63:0]  WBL_DATA_IN4_nr1 ;
+    reg [63:0]  WBL_DATA_IN5_nr1 ;
+    reg [63:0]  WBL_DATA_IN6_nr1 ;
+    reg [63:0]  WBL_DATA_IN7_nr1 ;
+    reg [63:0]  WBL_DATA_IN8_nr1 ;
+    reg [63:0]  WBL_DATA_IN9_nr1 ;
+    reg [63:0] WBL_DATA_IN10_nr1;
+    reg [63:0] WBL_DATA_IN11_nr1;
+    reg [63:0] WBL_DATA_IN12_nr1;
+    reg [63:0] WBL_DATA_IN13_nr1;
+    reg [63:0] WBL_DATA_IN14_nr1;
+    reg [63:0] WBL_DATA_IN15_nr1;
+    reg [63:0] WBL_DATA_IN16_nr1;
+    reg [5:0]        WWL_ADD_nr1      ;
+    reg [5:0]   RWL_DEC_ADD1_nr1 ;
+    reg [5:0]   RWL_DEC_ADD2_nr1 ;
+    reg [5:0]   RWL_DEC_ADD3_nr1 ;
+    reg [5:0]   RWL_DEC_ADD4_nr1 ;
+    reg [5:0]   RWL_DEC_ADD5_nr1 ;
+    reg [5:0]   RWL_DEC_ADD6_nr1 ;
+    reg [5:0]   RWL_DEC_ADD7_nr1 ;
+    reg [5:0]   RWL_DEC_ADD8_nr1 ;
+    reg [5:0]   RWL_DEC_ADD9_nr1 ;
+    reg [5:0]  RWL_DEC_ADD10_nr1;
+    reg [5:0]  RWL_DEC_ADD11_nr1;
+    reg [5:0]  RWL_DEC_ADD12_nr1;
+    reg [5:0]  RWL_DEC_ADD13_nr1;
+    reg [5:0]  RWL_DEC_ADD14_nr1;
+    reg [5:0]  RWL_DEC_ADD15_nr1;
+    reg [5:0]  RWL_DEC_ADD16_nr1;
+    reg [1:0]     DEMUX_ADD1_nr1   ;
+    reg [1:0]     DEMUX_ADD2_nr1   ;
+    reg [1:0]     DEMUX_ADD3_nr1   ;
+    reg [1:0]     DEMUX_ADD4_nr1   ;
+    reg [1:0]     DEMUX_ADD5_nr1   ;
+    reg [1:0]     DEMUX_ADD6_nr1   ;
+    reg [1:0]     DEMUX_ADD7_nr1   ;
+    reg [1:0]     DEMUX_ADD8_nr1   ;
+    reg [1:0]     DEMUX_ADD9_nr1   ;
+    reg [1:0]    DEMUX_ADD10_nr1  ;
+    reg [1:0]    DEMUX_ADD11_nr1  ;
+    reg [1:0]    DEMUX_ADD12_nr1  ;
+    reg [1:0]    DEMUX_ADD13_nr1  ;
+    reg [1:0]    DEMUX_ADD14_nr1  ;
+    reg [1:0]    DEMUX_ADD15_nr1  ;
+    reg [1:0]    DEMUX_ADD16_nr1  ;
+    reg          DEMUX_ADD_3_nr1  ;
+    reg                IO_EN_nr1;
+    always @( posedge clk_100m or negedge rst_n) begin
+        if (!rst_n) begin
+                IO_MODEL_nr1      <= 2'b00;
+                CIM_model_nr1     <= 2'b00;
+                DATA_IN_nr1       <= 16'b0;
+                WBL_DATA_IN1_nr1  <= 64'b0;
+                WBL_DATA_IN2_nr1  <= 64'b0;
+                WBL_DATA_IN3_nr1  <= 64'b0;
+                WBL_DATA_IN4_nr1  <= 64'b0;
+                WBL_DATA_IN5_nr1  <= 64'b0;
+                WBL_DATA_IN6_nr1  <= 64'b0;
+                WBL_DATA_IN7_nr1  <= 64'b0;
+                WBL_DATA_IN8_nr1  <= 64'b0;
+                WBL_DATA_IN9_nr1  <= 64'b0;
+                WBL_DATA_IN10_nr1 <= 64'b0;
+                WBL_DATA_IN11_nr1 <= 64'b0;
+                WBL_DATA_IN12_nr1 <= 64'b0;
+                WBL_DATA_IN13_nr1 <= 64'b0;
+                WBL_DATA_IN14_nr1 <= 64'b0;
+                WBL_DATA_IN15_nr1 <= 64'b0;
+                WBL_DATA_IN16_nr1 <= 64'b0;
+                WWL_ADD_nr1       <= 6'b0;
+                RWL_DEC_ADD1_nr1  <= 6'b0;
+                RWL_DEC_ADD2_nr1  <= 6'b0;
+                RWL_DEC_ADD3_nr1  <= 6'b0;
+                RWL_DEC_ADD4_nr1  <= 6'b0;
+                RWL_DEC_ADD5_nr1  <= 6'b0;
+                RWL_DEC_ADD6_nr1  <= 6'b0;
+                RWL_DEC_ADD7_nr1  <= 6'b0;
+                RWL_DEC_ADD8_nr1  <= 6'b0;
+                RWL_DEC_ADD9_nr1  <= 6'b0;
+                RWL_DEC_ADD10_nr1 <= 6'b0;
+                RWL_DEC_ADD11_nr1 <= 6'b0;
+                RWL_DEC_ADD12_nr1 <= 6'b0;
+                RWL_DEC_ADD13_nr1 <= 6'b0;
+                RWL_DEC_ADD14_nr1 <= 6'b0;
+                RWL_DEC_ADD15_nr1 <= 6'b0;
+                RWL_DEC_ADD16_nr1 <= 6'b0;
+                DEMUX_ADD1_nr1    <= 2'b0;
+                DEMUX_ADD2_nr1    <= 2'b0;
+                DEMUX_ADD3_nr1    <= 2'b0;
+                DEMUX_ADD4_nr1    <= 2'b0;
+                DEMUX_ADD5_nr1    <= 2'b0;
+                DEMUX_ADD6_nr1    <= 2'b0;
+                DEMUX_ADD7_nr1    <= 2'b0;
+                DEMUX_ADD8_nr1    <= 2'b0;
+                DEMUX_ADD9_nr1    <= 2'b0;
+                DEMUX_ADD10_nr1   <= 2'b0;
+                DEMUX_ADD11_nr1   <= 2'b0;
+                DEMUX_ADD12_nr1   <= 2'b0;
+                DEMUX_ADD13_nr1   <= 2'b0;
+                DEMUX_ADD14_nr1   <= 2'b0;
+                DEMUX_ADD15_nr1   <= 2'b0;
+                DEMUX_ADD16_nr1   <= 2'b0;
+                DEMUX_ADD_3_nr1   <= 1'b0;
+                // IO_EN_nr1         <= 1'b0;
         end
-        else begin
-            if (IO_EN) begin
-                IO_EN_FLAG <= 1'b1;
-            end
-            else begin
-                if ( counter_work >= 7'd127) begin
-                    IO_EN_FLAG <= 1'b0;
-                end
-                else begin
-                    IO_EN_FLAG <= 1'b1;
-                end
-            end
+        else if (IO_EN) begin //已经输入寄存了
+                // IO_EN_nr1         <= 1'b1 ;
+                IO_MODEL_nr1      <= IO_MODEL;
+                CIM_model_nr1     <= CIM_model;
+                DATA_IN_nr1       <= DATA_IN;
+                WBL_DATA_IN1_nr1  <= WBL_DATA_IN1;
+                WBL_DATA_IN2_nr1  <= WBL_DATA_IN2;
+                WBL_DATA_IN3_nr1  <= WBL_DATA_IN3;
+                WBL_DATA_IN4_nr1  <= WBL_DATA_IN4;
+                WBL_DATA_IN5_nr1  <= WBL_DATA_IN5;
+                WBL_DATA_IN6_nr1  <= WBL_DATA_IN6;
+                WBL_DATA_IN7_nr1  <= WBL_DATA_IN7;
+                WBL_DATA_IN8_nr1  <= WBL_DATA_IN8;
+                WBL_DATA_IN9_nr1  <= WBL_DATA_IN9;
+                WBL_DATA_IN10_nr1 <= WBL_DATA_IN10;
+                WBL_DATA_IN11_nr1 <= WBL_DATA_IN11;
+                WBL_DATA_IN12_nr1 <= WBL_DATA_IN12;
+                WBL_DATA_IN13_nr1 <= WBL_DATA_IN13;
+                WBL_DATA_IN14_nr1 <= WBL_DATA_IN14;
+                WBL_DATA_IN15_nr1 <= WBL_DATA_IN15;
+                WBL_DATA_IN16_nr1 <= WBL_DATA_IN16;
+                WWL_ADD_nr1       <= WWL_ADD;
+                RWL_DEC_ADD1_nr1  <= RWL_DEC_ADD1;
+                RWL_DEC_ADD2_nr1  <= RWL_DEC_ADD2;
+                RWL_DEC_ADD3_nr1  <= RWL_DEC_ADD3;
+                RWL_DEC_ADD4_nr1  <= RWL_DEC_ADD4;
+                RWL_DEC_ADD5_nr1  <= RWL_DEC_ADD5;
+                RWL_DEC_ADD6_nr1  <= RWL_DEC_ADD6;
+                RWL_DEC_ADD7_nr1  <= RWL_DEC_ADD7;
+                RWL_DEC_ADD8_nr1  <= RWL_DEC_ADD8;
+                RWL_DEC_ADD9_nr1  <= RWL_DEC_ADD9;
+                RWL_DEC_ADD10_nr1 <= RWL_DEC_ADD10;
+                RWL_DEC_ADD11_nr1 <= RWL_DEC_ADD11;
+                RWL_DEC_ADD12_nr1 <= RWL_DEC_ADD12;
+                RWL_DEC_ADD13_nr1 <= RWL_DEC_ADD13;
+                RWL_DEC_ADD14_nr1 <= RWL_DEC_ADD14;
+                RWL_DEC_ADD15_nr1 <= RWL_DEC_ADD15;
+                RWL_DEC_ADD16_nr1 <= RWL_DEC_ADD16;
+                DEMUX_ADD1_nr1    <= DEMUX_ADD1;
+                DEMUX_ADD2_nr1    <= DEMUX_ADD2;
+                DEMUX_ADD3_nr1    <= DEMUX_ADD3;
+                DEMUX_ADD4_nr1    <= DEMUX_ADD4;
+                DEMUX_ADD5_nr1    <= DEMUX_ADD5;
+                DEMUX_ADD6_nr1    <= DEMUX_ADD6;
+                DEMUX_ADD7_nr1    <= DEMUX_ADD7;
+                DEMUX_ADD8_nr1    <= DEMUX_ADD8;
+                DEMUX_ADD9_nr1    <= DEMUX_ADD9;
+                DEMUX_ADD10_nr1   <= DEMUX_ADD10;
+                DEMUX_ADD11_nr1   <= DEMUX_ADD11;
+                DEMUX_ADD12_nr1   <= DEMUX_ADD12;
+                DEMUX_ADD13_nr1   <= DEMUX_ADD13;
+                DEMUX_ADD14_nr1   <= DEMUX_ADD14;
+                DEMUX_ADD15_nr1   <= DEMUX_ADD15;
+                DEMUX_ADD16_nr1   <= DEMUX_ADD16;
+                DEMUX_ADD_3_nr1   <= DEMUX_ADD_3;           
         end
     end
-    // 寄存输入
+    always @( posedge clk_100m or negedge rst_n) begin
+        if (!rst_n) begin
+                IO_EN_nr1         <= 1'b0;
+        end
+        else begin
+                IO_EN_nr1         <= IO_EN ;
+        end
+    end
+    // 400Mhz时钟下的第一拍
+    reg [1:0]  IO_MODEL_nr2     ;    // 01写, 10读
+    reg [1:0]  CIM_model_nr2    ;    // 存算模式选择
+    reg [16:1] DATA_IN_nr2      ;    // LIM_IN, LIM输入 16块芯片的算输入数据
+    reg [63:0] WBL_DATA_IN1_nr2 ;
+    reg [63:0] WBL_DATA_IN2_nr2 ;
+    reg [63:0] WBL_DATA_IN3_nr2 ;
+    reg [63:0] WBL_DATA_IN4_nr2 ;
+    reg [63:0] WBL_DATA_IN5_nr2 ;
+    reg [63:0] WBL_DATA_IN6_nr2 ;
+    reg [63:0] WBL_DATA_IN7_nr2 ;
+    reg [63:0] WBL_DATA_IN8_nr2 ;
+    reg [63:0] WBL_DATA_IN9_nr2 ;
+    reg [63:0] WBL_DATA_IN10_nr2;
+    reg [63:0] WBL_DATA_IN11_nr2;
+    reg [63:0] WBL_DATA_IN12_nr2;
+    reg [63:0] WBL_DATA_IN13_nr2;
+    reg [63:0] WBL_DATA_IN14_nr2;
+    reg [63:0] WBL_DATA_IN15_nr2;
+    reg [63:0] WBL_DATA_IN16_nr2;
+    reg [5:0]  WWL_ADD_nr2      ;
+    reg [5:0]  RWL_DEC_ADD1_nr2 ;
+    reg [5:0]  RWL_DEC_ADD2_nr2 ;
+    reg [5:0]  RWL_DEC_ADD3_nr2 ;
+    reg [5:0]  RWL_DEC_ADD4_nr2 ;
+    reg [5:0]  RWL_DEC_ADD5_nr2 ;
+    reg [5:0]  RWL_DEC_ADD6_nr2 ;
+    reg [5:0]  RWL_DEC_ADD7_nr2 ;
+    reg [5:0]  RWL_DEC_ADD8_nr2 ;
+    reg [5:0]  RWL_DEC_ADD9_nr2 ;
+    reg [5:0]  RWL_DEC_ADD10_nr2;
+    reg [5:0]  RWL_DEC_ADD11_nr2;
+    reg [5:0]  RWL_DEC_ADD12_nr2;
+    reg [5:0]  RWL_DEC_ADD13_nr2;
+    reg [5:0]  RWL_DEC_ADD14_nr2;
+    reg [5:0]  RWL_DEC_ADD15_nr2;
+    reg [5:0]  RWL_DEC_ADD16_nr2;
+    reg [1:0]  DEMUX_ADD1_nr2   ;
+    reg [1:0]  DEMUX_ADD2_nr2   ;
+    reg [1:0]  DEMUX_ADD3_nr2   ;
+    reg [1:0]  DEMUX_ADD4_nr2   ;
+    reg [1:0]  DEMUX_ADD5_nr2   ;
+    reg [1:0]  DEMUX_ADD6_nr2   ;
+    reg [1:0]  DEMUX_ADD7_nr2   ;
+    reg [1:0]  DEMUX_ADD8_nr2   ;
+    reg [1:0]  DEMUX_ADD9_nr2   ;
+    reg [1:0]  DEMUX_ADD10_nr2  ;
+    reg [1:0]  DEMUX_ADD11_nr2  ;
+    reg [1:0]  DEMUX_ADD12_nr2  ;
+    reg [1:0]  DEMUX_ADD13_nr2  ;
+    reg [1:0]  DEMUX_ADD14_nr2  ;
+    reg [1:0]  DEMUX_ADD15_nr2  ;
+    reg [1:0]  DEMUX_ADD16_nr2  ;
+    reg        DEMUX_ADD_3_nr2  ;
+    reg        IO_EN_nr2        ;
+    // 400Mhz时钟下的第二拍
+    reg IO_EN_FLAG; // stay 1 while working
+    (*dont_touch="yes"*)reg [12:0]  counter_work;
+    reg IO_EN_r;
     reg [1:0]  IO_MODEL_r     ;    // 01写, 10读
     reg [1:0]  CIM_model_r    ;    // 存算模式选择
     reg [16:1] DATA_IN_r      ;    // LIM_IN, LIM输入 16块芯片的算输入数据
@@ -208,191 +426,168 @@ module DRAM_write_read_16core(
     reg [1:0]  DEMUX_ADD15_r  ;
     reg [1:0]  DEMUX_ADD16_r  ;
     reg        DEMUX_ADD_3_r  ;
-
-    always @(posedge clk or negedge rst_n)begin
-        if(!rst_n)begin 
-            IO_MODEL_r     <= 2'b00;
-            CIM_model_r    <= 2'b00;
-            DATA_IN_r      <= 16'b0;
-            WBL_DATA_IN1_r <= 64'b0;
-            WBL_DATA_IN2_r <= 64'b0;
-            WBL_DATA_IN3_r <= 64'b0;
-            WBL_DATA_IN4_r <= 64'b0;
-            WBL_DATA_IN5_r <= 64'b0;
-            WBL_DATA_IN6_r <= 64'b0;
-            WBL_DATA_IN7_r <= 64'b0;
-            WBL_DATA_IN8_r <= 64'b0;
-            WBL_DATA_IN9_r <= 64'b0;
-            WBL_DATA_IN10_r<= 64'b0;
-            WBL_DATA_IN11_r<= 64'b0;
-            WBL_DATA_IN12_r<= 64'b0;
-            WBL_DATA_IN13_r<= 64'b0;
-            WBL_DATA_IN14_r<= 64'b0;
-            WBL_DATA_IN15_r<= 64'b0;
-            WBL_DATA_IN16_r<= 64'b0;
-            WWL_ADD_r      <= 6'b0;
-            RWL_DEC_ADD1_r <= 6'b0;
-            RWL_DEC_ADD2_r <= 6'b0;
-            RWL_DEC_ADD3_r <= 6'b0;
-            RWL_DEC_ADD4_r <= 6'b0;
-            RWL_DEC_ADD5_r <= 6'b0;
-            RWL_DEC_ADD6_r <= 6'b0;
-            RWL_DEC_ADD7_r <= 6'b0;
-            RWL_DEC_ADD8_r <= 6'b0;
-            RWL_DEC_ADD9_r <= 6'b0;
-            RWL_DEC_ADD10_r<= 6'b0;
-            RWL_DEC_ADD11_r<= 6'b0;
-            RWL_DEC_ADD12_r<= 6'b0;
-            RWL_DEC_ADD13_r<= 6'b0;
-            RWL_DEC_ADD14_r<= 6'b0;
-            RWL_DEC_ADD15_r<= 6'b0;
-            RWL_DEC_ADD16_r<= 6'b0;
-            DEMUX_ADD1_r   <= 2'b0;
-            DEMUX_ADD2_r   <= 2'b0;
-            DEMUX_ADD3_r   <= 2'b0;
-            DEMUX_ADD4_r   <= 2'b0;
-            DEMUX_ADD5_r   <= 2'b0;
-            DEMUX_ADD6_r   <= 2'b0;
-            DEMUX_ADD7_r   <= 2'b0;
-            DEMUX_ADD8_r   <= 2'b0;
-            DEMUX_ADD9_r   <= 2'b0;
-            DEMUX_ADD10_r  <= 2'b0;
-            DEMUX_ADD11_r  <= 2'b0;
-            DEMUX_ADD12_r  <= 2'b0;
-            DEMUX_ADD13_r  <= 2'b0;
-            DEMUX_ADD14_r  <= 2'b0;
-            DEMUX_ADD15_r  <= 2'b0;
-            DEMUX_ADD16_r  <= 2'b0;
-            DEMUX_ADD_3_r  <= 1'b0;
+    always @( posedge clk_400m or negedge rst_n) begin
+        if (!rst_n) begin
+                IO_EN_nr1         <= 1'b0;
+                IO_EN_r           <= 1'b0;
         end
         else begin
-            if (IO_EN) begin
-                IO_MODEL_r     <= IO_MODEL;
-                CIM_model_r    <= CIM_model;
-                DATA_IN_r      <= DATA_IN;
-                WBL_DATA_IN1_r <= WBL_DATA_IN1;
-                WBL_DATA_IN2_r <= WBL_DATA_IN2;
-                WBL_DATA_IN3_r <= WBL_DATA_IN3;
-                WBL_DATA_IN4_r <= WBL_DATA_IN4;
-                WBL_DATA_IN5_r <= WBL_DATA_IN5;
-                WBL_DATA_IN6_r <= WBL_DATA_IN6;
-                WBL_DATA_IN7_r <= WBL_DATA_IN7;
-                WBL_DATA_IN8_r <= WBL_DATA_IN8;
-                WBL_DATA_IN9_r <= WBL_DATA_IN9;
-                WBL_DATA_IN10_r<= WBL_DATA_IN10;
-                WBL_DATA_IN11_r<= WBL_DATA_IN11;
-                WBL_DATA_IN12_r<= WBL_DATA_IN12;
-                WBL_DATA_IN13_r<= WBL_DATA_IN13;
-                WBL_DATA_IN14_r<= WBL_DATA_IN14;
-                WBL_DATA_IN15_r<= WBL_DATA_IN15;
-                WBL_DATA_IN16_r<= WBL_DATA_IN16;
-                WWL_ADD_r      <= WWL_ADD;
-                RWL_DEC_ADD1_r <= RWL_DEC_ADD1;
-                RWL_DEC_ADD2_r <= RWL_DEC_ADD2;
-                RWL_DEC_ADD3_r <= RWL_DEC_ADD3;
-                RWL_DEC_ADD4_r <= RWL_DEC_ADD4;
-                RWL_DEC_ADD5_r <= RWL_DEC_ADD5;
-                RWL_DEC_ADD6_r <= RWL_DEC_ADD6;
-                RWL_DEC_ADD7_r <= RWL_DEC_ADD7;
-                RWL_DEC_ADD8_r <= RWL_DEC_ADD8;
-                RWL_DEC_ADD9_r <= RWL_DEC_ADD9;
-                RWL_DEC_ADD10_r<= RWL_DEC_ADD10;
-                RWL_DEC_ADD11_r<= RWL_DEC_ADD11;
-                RWL_DEC_ADD12_r<= RWL_DEC_ADD12;
-                RWL_DEC_ADD13_r<= RWL_DEC_ADD13;
-                RWL_DEC_ADD14_r<= RWL_DEC_ADD14;
-                RWL_DEC_ADD15_r<= RWL_DEC_ADD15;
-                RWL_DEC_ADD16_r<= RWL_DEC_ADD16;
-                DEMUX_ADD1_r   <= DEMUX_ADD1;
-                DEMUX_ADD2_r   <= DEMUX_ADD2;
-                DEMUX_ADD3_r   <= DEMUX_ADD3;
-                DEMUX_ADD4_r   <= DEMUX_ADD4;
-                DEMUX_ADD5_r   <= DEMUX_ADD5;
-                DEMUX_ADD6_r   <= DEMUX_ADD6;
-                DEMUX_ADD7_r   <= DEMUX_ADD7;
-                DEMUX_ADD8_r   <= DEMUX_ADD8;
-                DEMUX_ADD9_r   <= DEMUX_ADD9;
-                DEMUX_ADD10_r  <= DEMUX_ADD10;
-                DEMUX_ADD11_r  <= DEMUX_ADD11;
-                DEMUX_ADD12_r  <= DEMUX_ADD12;
-                DEMUX_ADD13_r  <= DEMUX_ADD13;
-                DEMUX_ADD14_r  <= DEMUX_ADD14;
-                DEMUX_ADD15_r  <= DEMUX_ADD15;
-                DEMUX_ADD16_r  <= DEMUX_ADD16;
-                DEMUX_ADD_3_r  <= DEMUX_ADD_3;
-            end
-            else begin
-                IO_MODEL_r     <= IO_MODEL_r;
-                CIM_model_r    <= CIM_model_r;
-                DATA_IN_r      <= DATA_IN_r;
-                WBL_DATA_IN1_r <= WBL_DATA_IN1_r;
-                WBL_DATA_IN2_r <= WBL_DATA_IN2_r;
-                WBL_DATA_IN3_r <= WBL_DATA_IN3_r;
-                WBL_DATA_IN4_r <= WBL_DATA_IN4_r;
-                WBL_DATA_IN5_r <= WBL_DATA_IN5_r;
-                WBL_DATA_IN6_r <= WBL_DATA_IN6_r;
-                WBL_DATA_IN7_r <= WBL_DATA_IN7_r;
-                WBL_DATA_IN8_r <= WBL_DATA_IN8_r;
-                WBL_DATA_IN9_r <= WBL_DATA_IN9_r;
-                WBL_DATA_IN10_r<= WBL_DATA_IN10_r;
-                WBL_DATA_IN11_r<= WBL_DATA_IN11_r;
-                WBL_DATA_IN12_r<= WBL_DATA_IN12_r;
-                WBL_DATA_IN13_r<= WBL_DATA_IN13_r;
-                WBL_DATA_IN14_r<= WBL_DATA_IN14_r;
-                WBL_DATA_IN15_r<= WBL_DATA_IN15_r;
-                WBL_DATA_IN16_r<= WBL_DATA_IN16_r;
-                WWL_ADD_r      <= WWL_ADD_r;
-                RWL_DEC_ADD1_r <= RWL_DEC_ADD1_r;
-                RWL_DEC_ADD2_r <= RWL_DEC_ADD2_r;
-                RWL_DEC_ADD3_r <= RWL_DEC_ADD3_r;
-                RWL_DEC_ADD4_r <= RWL_DEC_ADD4_r;
-                RWL_DEC_ADD5_r <= RWL_DEC_ADD5_r;
-                RWL_DEC_ADD6_r <= RWL_DEC_ADD6_r;
-                RWL_DEC_ADD7_r <= RWL_DEC_ADD7_r;
-                RWL_DEC_ADD8_r <= RWL_DEC_ADD8_r;
-                RWL_DEC_ADD9_r <= RWL_DEC_ADD9_r;
-                RWL_DEC_ADD10_r<= RWL_DEC_ADD10_r;
-                RWL_DEC_ADD11_r<= RWL_DEC_ADD11_r;
-                RWL_DEC_ADD12_r<= RWL_DEC_ADD12_r;
-                RWL_DEC_ADD13_r<= RWL_DEC_ADD13_r;
-                RWL_DEC_ADD14_r<= RWL_DEC_ADD14_r;
-                RWL_DEC_ADD15_r<= RWL_DEC_ADD15_r;
-                RWL_DEC_ADD16_r<= RWL_DEC_ADD16_r;
-                DEMUX_ADD1_r   <= DEMUX_ADD1_r;
-                DEMUX_ADD2_r   <= DEMUX_ADD2_r;
-                DEMUX_ADD3_r   <= DEMUX_ADD3_r;
-                DEMUX_ADD4_r   <= DEMUX_ADD4_r;
-                DEMUX_ADD5_r   <= DEMUX_ADD5_r;
-                DEMUX_ADD6_r   <= DEMUX_ADD6_r;
-                DEMUX_ADD7_r   <= DEMUX_ADD7_r;
-                DEMUX_ADD8_r   <= DEMUX_ADD8_r;
-                DEMUX_ADD9_r   <= DEMUX_ADD9_r;
-                DEMUX_ADD10_r  <= DEMUX_ADD10_r;
-                DEMUX_ADD11_r  <= DEMUX_ADD11_r;
-                DEMUX_ADD12_r  <= DEMUX_ADD12_r;
-                DEMUX_ADD13_r  <= DEMUX_ADD13_r;
-                DEMUX_ADD14_r  <= DEMUX_ADD14_r;
-                DEMUX_ADD15_r  <= DEMUX_ADD15_r;
-                DEMUX_ADD16_r  <= DEMUX_ADD16_r;
-                DEMUX_ADD_3_r  <= DEMUX_ADD_3_r;
-            end
+                IO_EN_nr2         <= IO_EN_nr1;
+                IO_EN_r           <= IO_EN_nr2;
+        end
+    end    
+    always @(posedge clk_400m or negedge rst_n)begin
+        if(!rst_n)begin 
+            IO_MODEL_r     <= 2'b00;IO_MODEL_nr2      <= 2'b00;
+            CIM_model_r    <= 2'b00;CIM_model_nr2     <= 2'b00;
+            DATA_IN_r      <= 16'b0;DATA_IN_nr2       <= 16'b0;
+            WBL_DATA_IN1_r <= 64'b0;WBL_DATA_IN1_nr2  <= 64'b0;
+            WBL_DATA_IN2_r <= 64'b0;WBL_DATA_IN2_nr2  <= 64'b0;
+            WBL_DATA_IN3_r <= 64'b0;WBL_DATA_IN3_nr2  <= 64'b0;
+            WBL_DATA_IN4_r <= 64'b0;WBL_DATA_IN4_nr2  <= 64'b0;
+            WBL_DATA_IN5_r <= 64'b0;WBL_DATA_IN5_nr2  <= 64'b0;
+            WBL_DATA_IN6_r <= 64'b0;WBL_DATA_IN6_nr2  <= 64'b0;
+            WBL_DATA_IN7_r <= 64'b0;WBL_DATA_IN7_nr2  <= 64'b0;
+            WBL_DATA_IN8_r <= 64'b0;WBL_DATA_IN8_nr2  <= 64'b0;
+            WBL_DATA_IN9_r <= 64'b0;WBL_DATA_IN9_nr2  <= 64'b0;
+            WBL_DATA_IN10_r<= 64'b0;WBL_DATA_IN10_nr2 <= 64'b0;
+            WBL_DATA_IN11_r<= 64'b0;WBL_DATA_IN11_nr2 <= 64'b0;
+            WBL_DATA_IN12_r<= 64'b0;WBL_DATA_IN12_nr2 <= 64'b0;
+            WBL_DATA_IN13_r<= 64'b0;WBL_DATA_IN13_nr2 <= 64'b0;
+            WBL_DATA_IN14_r<= 64'b0;WBL_DATA_IN14_nr2 <= 64'b0;
+            WBL_DATA_IN15_r<= 64'b0;WBL_DATA_IN15_nr2 <= 64'b0;
+            WBL_DATA_IN16_r<= 64'b0;WBL_DATA_IN16_nr2 <= 64'b0;
+            WWL_ADD_r      <= 6'b0; WWL_ADD_nr2       <= 6'b0; 
+            RWL_DEC_ADD1_r <= 6'b0; RWL_DEC_ADD1_nr2  <= 6'b0; 
+            RWL_DEC_ADD2_r <= 6'b0; RWL_DEC_ADD2_nr2  <= 6'b0; 
+            RWL_DEC_ADD3_r <= 6'b0; RWL_DEC_ADD3_nr2  <= 6'b0; 
+            RWL_DEC_ADD4_r <= 6'b0; RWL_DEC_ADD4_nr2  <= 6'b0; 
+            RWL_DEC_ADD5_r <= 6'b0; RWL_DEC_ADD5_nr2  <= 6'b0; 
+            RWL_DEC_ADD6_r <= 6'b0; RWL_DEC_ADD6_nr2  <= 6'b0; 
+            RWL_DEC_ADD7_r <= 6'b0; RWL_DEC_ADD7_nr2  <= 6'b0; 
+            RWL_DEC_ADD8_r <= 6'b0; RWL_DEC_ADD8_nr2  <= 6'b0; 
+            RWL_DEC_ADD9_r <= 6'b0; RWL_DEC_ADD9_nr2  <= 6'b0; 
+            RWL_DEC_ADD10_r<= 6'b0; RWL_DEC_ADD10_nr2 <= 6'b0; 
+            RWL_DEC_ADD11_r<= 6'b0; RWL_DEC_ADD11_nr2 <= 6'b0; 
+            RWL_DEC_ADD12_r<= 6'b0; RWL_DEC_ADD12_nr2 <= 6'b0; 
+            RWL_DEC_ADD13_r<= 6'b0; RWL_DEC_ADD13_nr2 <= 6'b0; 
+            RWL_DEC_ADD14_r<= 6'b0; RWL_DEC_ADD14_nr2 <= 6'b0; 
+            RWL_DEC_ADD15_r<= 6'b0; RWL_DEC_ADD15_nr2 <= 6'b0; 
+            RWL_DEC_ADD16_r<= 6'b0; RWL_DEC_ADD16_nr2 <= 6'b0; 
+            DEMUX_ADD1_r   <= 2'b0; DEMUX_ADD1_nr2    <= 2'b0; 
+            DEMUX_ADD2_r   <= 2'b0; DEMUX_ADD2_nr2    <= 2'b0; 
+            DEMUX_ADD3_r   <= 2'b0; DEMUX_ADD3_nr2    <= 2'b0; 
+            DEMUX_ADD4_r   <= 2'b0; DEMUX_ADD4_nr2    <= 2'b0; 
+            DEMUX_ADD5_r   <= 2'b0; DEMUX_ADD5_nr2    <= 2'b0; 
+            DEMUX_ADD6_r   <= 2'b0; DEMUX_ADD6_nr2    <= 2'b0; 
+            DEMUX_ADD7_r   <= 2'b0; DEMUX_ADD7_nr2    <= 2'b0; 
+            DEMUX_ADD8_r   <= 2'b0; DEMUX_ADD8_nr2    <= 2'b0; 
+            DEMUX_ADD9_r   <= 2'b0; DEMUX_ADD9_nr2    <= 2'b0; 
+            DEMUX_ADD10_r  <= 2'b0; DEMUX_ADD10_nr2   <= 2'b0; 
+            DEMUX_ADD11_r  <= 2'b0; DEMUX_ADD11_nr2   <= 2'b0; 
+            DEMUX_ADD12_r  <= 2'b0; DEMUX_ADD12_nr2   <= 2'b0; 
+            DEMUX_ADD13_r  <= 2'b0; DEMUX_ADD13_nr2   <= 2'b0; 
+            DEMUX_ADD14_r  <= 2'b0; DEMUX_ADD14_nr2   <= 2'b0; 
+            DEMUX_ADD15_r  <= 2'b0; DEMUX_ADD15_nr2   <= 2'b0; 
+            DEMUX_ADD16_r  <= 2'b0; DEMUX_ADD16_nr2   <= 2'b0; 
+            DEMUX_ADD_3_r  <= 1'b0; DEMUX_ADD_3_nr2   <= 1'b0; 
+        end
+        else begin
+                IO_MODEL_r     <= IO_MODEL_nr2     ;IO_MODEL_nr2      <=IO_MODEL_nr1      ;
+                CIM_model_r    <= CIM_model_nr2    ;CIM_model_nr2     <=CIM_model_nr1     ; 
+                DATA_IN_r      <= DATA_IN_nr2      ;DATA_IN_nr2       <=DATA_IN_nr1       ; 
+                WBL_DATA_IN1_r <= WBL_DATA_IN1_nr2 ;WBL_DATA_IN1_nr2  <=WBL_DATA_IN1_nr1  ;
+                WBL_DATA_IN2_r <= WBL_DATA_IN2_nr2 ;WBL_DATA_IN2_nr2  <=WBL_DATA_IN2_nr1  ;
+                WBL_DATA_IN3_r <= WBL_DATA_IN3_nr2 ;WBL_DATA_IN3_nr2  <=WBL_DATA_IN3_nr1  ;
+                WBL_DATA_IN4_r <= WBL_DATA_IN4_nr2 ;WBL_DATA_IN4_nr2  <=WBL_DATA_IN4_nr1  ;
+                WBL_DATA_IN5_r <= WBL_DATA_IN5_nr2 ;WBL_DATA_IN5_nr2  <=WBL_DATA_IN5_nr1  ;
+                WBL_DATA_IN6_r <= WBL_DATA_IN6_nr2 ;WBL_DATA_IN6_nr2  <=WBL_DATA_IN6_nr1  ;
+                WBL_DATA_IN7_r <= WBL_DATA_IN7_nr2 ;WBL_DATA_IN7_nr2  <=WBL_DATA_IN7_nr1  ;
+                WBL_DATA_IN8_r <= WBL_DATA_IN8_nr2 ;WBL_DATA_IN8_nr2  <=WBL_DATA_IN8_nr1  ;
+                WBL_DATA_IN9_r <= WBL_DATA_IN9_nr2 ;WBL_DATA_IN9_nr2  <=WBL_DATA_IN9_nr1  ;
+                WBL_DATA_IN10_r<= WBL_DATA_IN10_nr2;WBL_DATA_IN10_nr2 <=WBL_DATA_IN10_nr1 ;
+                WBL_DATA_IN11_r<= WBL_DATA_IN11_nr2;WBL_DATA_IN11_nr2 <=WBL_DATA_IN11_nr1 ;
+                WBL_DATA_IN12_r<= WBL_DATA_IN12_nr2;WBL_DATA_IN12_nr2 <=WBL_DATA_IN12_nr1 ;
+                WBL_DATA_IN13_r<= WBL_DATA_IN13_nr2;WBL_DATA_IN13_nr2 <=WBL_DATA_IN13_nr1 ;
+                WBL_DATA_IN14_r<= WBL_DATA_IN14_nr2;WBL_DATA_IN14_nr2 <=WBL_DATA_IN14_nr1 ;
+                WBL_DATA_IN15_r<= WBL_DATA_IN15_nr2;WBL_DATA_IN15_nr2 <=WBL_DATA_IN15_nr1 ;
+                WBL_DATA_IN16_r<= WBL_DATA_IN16_nr2;WBL_DATA_IN16_nr2 <=WBL_DATA_IN16_nr1 ;
+                WWL_ADD_r      <= WWL_ADD_nr2      ;WWL_ADD_nr2       <=WWL_ADD_nr1       ;
+                RWL_DEC_ADD1_r <= RWL_DEC_ADD1_nr2 ;RWL_DEC_ADD1_nr2  <=RWL_DEC_ADD1_nr1  ; 
+                RWL_DEC_ADD2_r <= RWL_DEC_ADD2_nr2 ;RWL_DEC_ADD2_nr2  <=RWL_DEC_ADD2_nr1  ; 
+                RWL_DEC_ADD3_r <= RWL_DEC_ADD3_nr2 ;RWL_DEC_ADD3_nr2  <=RWL_DEC_ADD3_nr1  ; 
+                RWL_DEC_ADD4_r <= RWL_DEC_ADD4_nr2 ;RWL_DEC_ADD4_nr2  <=RWL_DEC_ADD4_nr1  ;
+                RWL_DEC_ADD5_r <= RWL_DEC_ADD5_nr2 ;RWL_DEC_ADD5_nr2  <=RWL_DEC_ADD5_nr1  ; 
+                RWL_DEC_ADD6_r <= RWL_DEC_ADD6_nr2 ;RWL_DEC_ADD6_nr2  <=RWL_DEC_ADD6_nr1  ; 
+                RWL_DEC_ADD7_r <= RWL_DEC_ADD7_nr2 ;RWL_DEC_ADD7_nr2  <=RWL_DEC_ADD7_nr1  ; 
+                RWL_DEC_ADD8_r <= RWL_DEC_ADD8_nr2 ;RWL_DEC_ADD8_nr2  <=RWL_DEC_ADD8_nr1  ; 
+                RWL_DEC_ADD9_r <= RWL_DEC_ADD9_nr2 ;RWL_DEC_ADD9_nr2  <=RWL_DEC_ADD9_nr1  ; 
+                RWL_DEC_ADD10_r<= RWL_DEC_ADD10_nr2;RWL_DEC_ADD10_nr2 <=RWL_DEC_ADD10_nr1 ;
+                RWL_DEC_ADD11_r<= RWL_DEC_ADD11_nr2;RWL_DEC_ADD11_nr2 <=RWL_DEC_ADD11_nr1 ;
+                RWL_DEC_ADD12_r<= RWL_DEC_ADD12_nr2;RWL_DEC_ADD12_nr2 <=RWL_DEC_ADD12_nr1 ;  
+                RWL_DEC_ADD13_r<= RWL_DEC_ADD13_nr2;RWL_DEC_ADD13_nr2 <=RWL_DEC_ADD13_nr1 ;
+                RWL_DEC_ADD14_r<= RWL_DEC_ADD14_nr2;RWL_DEC_ADD14_nr2 <=RWL_DEC_ADD14_nr1 ; 
+                RWL_DEC_ADD15_r<= RWL_DEC_ADD15_nr2;RWL_DEC_ADD15_nr2 <=RWL_DEC_ADD15_nr1 ; 
+                RWL_DEC_ADD16_r<= RWL_DEC_ADD16_nr2;RWL_DEC_ADD16_nr2 <=RWL_DEC_ADD16_nr1 ;
+                DEMUX_ADD1_r   <= DEMUX_ADD1_nr2   ;DEMUX_ADD1_nr2    <=DEMUX_ADD1_nr1    ;  
+                DEMUX_ADD2_r   <= DEMUX_ADD2_nr2   ;DEMUX_ADD2_nr2    <=DEMUX_ADD2_nr1    ; 
+                DEMUX_ADD3_r   <= DEMUX_ADD3_nr2   ;DEMUX_ADD3_nr2    <=DEMUX_ADD3_nr1    ; 
+                DEMUX_ADD4_r   <= DEMUX_ADD4_nr2   ;DEMUX_ADD4_nr2    <=DEMUX_ADD4_nr1    ; 
+                DEMUX_ADD5_r   <= DEMUX_ADD5_nr2   ;DEMUX_ADD5_nr2    <=DEMUX_ADD5_nr1    ; 
+                DEMUX_ADD6_r   <= DEMUX_ADD6_nr2   ;DEMUX_ADD6_nr2    <=DEMUX_ADD6_nr1    ; 
+                DEMUX_ADD7_r   <= DEMUX_ADD7_nr2   ;DEMUX_ADD7_nr2    <=DEMUX_ADD7_nr1    ; 
+                DEMUX_ADD8_r   <= DEMUX_ADD8_nr2   ;DEMUX_ADD8_nr2    <=DEMUX_ADD8_nr1    ; 
+                DEMUX_ADD9_r   <= DEMUX_ADD9_nr2   ;DEMUX_ADD9_nr2    <=DEMUX_ADD9_nr1    ; 
+                DEMUX_ADD10_r  <= DEMUX_ADD10_nr2  ;DEMUX_ADD10_nr2   <=DEMUX_ADD10_nr1   ; 
+                DEMUX_ADD11_r  <= DEMUX_ADD11_nr2  ;DEMUX_ADD11_nr2   <=DEMUX_ADD11_nr1   ; 
+                DEMUX_ADD12_r  <= DEMUX_ADD12_nr2  ;DEMUX_ADD12_nr2   <=DEMUX_ADD12_nr1   ; 
+                DEMUX_ADD13_r  <= DEMUX_ADD13_nr2  ;DEMUX_ADD13_nr2   <=DEMUX_ADD13_nr1   ; 
+                DEMUX_ADD14_r  <= DEMUX_ADD14_nr2  ;DEMUX_ADD14_nr2   <=DEMUX_ADD14_nr1   ; 
+                DEMUX_ADD15_r  <= DEMUX_ADD15_nr2  ;DEMUX_ADD15_nr2   <=DEMUX_ADD15_nr1   ; 
+                DEMUX_ADD16_r  <= DEMUX_ADD16_nr2  ;DEMUX_ADD16_nr2   <=DEMUX_ADD16_nr1   ; 
+                DEMUX_ADD_3_r  <= DEMUX_ADD_3_nr2  ;DEMUX_ADD_3_nr2   <=DEMUX_ADD_3_nr1   ; 
         end
     end
     // 
+    always @ (posedge clk_400m or negedge rst_n) begin
+        if(!rst_n)begin 
+            IO_EN_FLAG<=1'b0;
+        end
+        else begin
+            if (IO_EN_r) begin
+                IO_EN_FLAG <= 1'b1;
+            end
+            else begin
+                // 写入数据
+                if ( (counter_work >= 13'd3230) && (IO_MODEL_r == 2'b01) ) begin
+                    IO_EN_FLAG <= 1'b0;
+                end
+                // 读出数据
+                else if ( (counter_work >= 13'd636) && (IO_MODEL_r == 2'b10) ) begin
+                    IO_EN_FLAG <= 1'b0;
+                end
+                else begin
+                    IO_EN_FLAG <= IO_EN_FLAG;
+                end
+            end
+        end
+    end
+    assign DE_ADD3 = DEMUX_ADD3_r;
     always @(posedge clk_400m or negedge rst_n)begin
         if(!rst_n)begin 
-            counter_work<=9'd0;
+            counter_work<=13'd0;
         end        
         else begin
             if (IO_EN_FLAG)begin
                 counter_work <= counter_work + 1'b1;
             end
             else begin
-                counter_work<=9'd0;
+                counter_work<=13'd0;
             end
         end
     end   
     reg clk_out_WT;
+    assign clk_out = clk_out_WT;
     reg WR_flag;  // 写使能信号，写的时候为高电平
     // write data to DRAM (全展开 8 轮：起始位 0..7，每轮第一层移位 8 次，随后第二层一次脉冲)
     always @ (posedge clk_400m or negedge rst_n) begin
@@ -405,6 +600,7 @@ module DRAM_write_read_16core(
             ADD_VALID_IN<=1; 
             WRI_EN<=0; 
             WR_flag<=0; // DATA_VALID_IN 低电平有效 
+            WT_DONE <= 0;
         end
         else begin
             if (IO_EN_FLAG && (IO_MODEL_r == 2'b01) ) begin
@@ -414,7 +610,7 @@ module DRAM_write_read_16core(
                 // ================= 第 1 轮（索引 0,8,16,24,32,40,48,56） =================
                 13'd0:   begin
                             D_IN <= 16'd0; PC_D_IN <= 2'd0; clk_out_WT <= 1'b0;
-                            DATA_VALID_IN<=1; ADD_IN<=0; ADD_VALID_IN<=1; WRI_EN<=0;  WR_flag<=0;
+                            DATA_VALID_IN<=1; ADD_IN<=0; ADD_VALID_IN<=1; WRI_EN<=0;  WR_flag<=0; WT_DONE<=0;
                         end
                 13'd1:   begin
                             DATA_VALID_IN<=1; ADD_IN<=0; ADD_VALID_IN<=1; WRI_EN<=0; WR_flag<=1;
@@ -953,9 +1149,7 @@ module DRAM_write_read_16core(
                 13'd1200:   begin
                             PC_D_IN[0] <= 1'b0; clk_out_WT <= 1'b0; DATA_VALID_IN<=1;
                         end
-                13'd1201:   begin
-                            ;
-                        end
+                13'd1201:   begin end
                 13'd1202:   begin 
                             D_IN[1]  <= WBL_DATA_IN1_r[3];
                             D_IN[2]  <= WBL_DATA_IN2_r[3];
@@ -1311,9 +1505,7 @@ module DRAM_write_read_16core(
                 13'd2000:   begin
                             PC_D_IN[0] <= 1'b0; clk_out_WT <= 1'b0; DATA_VALID_IN<=1;
                         end
-                13'd2001:   begin
-                            ;
-                        end
+                13'd2001:   begin end
                 13'd2002:   begin 
                             D_IN[1]  <= WBL_DATA_IN1_r[5];
                             D_IN[2]  <= WBL_DATA_IN2_r[5];
@@ -1491,9 +1683,7 @@ module DRAM_write_read_16core(
                 13'd2400:   begin
                             PC_D_IN[0] <= 1'b0; clk_out_WT <= 1'b0; DATA_VALID_IN<=1;
                         end
-                13'd2401:   begin
-                            ;
-                        end
+                13'd2401:   begin end
                 13'd2402:   begin 
                             D_IN[1]  <= WBL_DATA_IN1_r[6];
                             D_IN[2]  <= WBL_DATA_IN2_r[6];
@@ -1902,7 +2092,8 @@ module DRAM_write_read_16core(
                 13'd3220: begin end
                 13'd3222: begin end
                 13'd3224: begin WRI_EN<=1; WR_flag<=0; end
-                13'd3226: begin end
+                13'd3226: begin  WT_DONE <= 1; end
+                13'd3230: begin  WT_DONE <= 0; end
                 default: begin end
                 endcase
             end
@@ -1922,55 +2113,382 @@ module DRAM_write_read_16core(
 //
     // read data from DRAM 
     reg RD_EN_pre;
-    reg read_data; // DRAM寄存数据
-    assign DRAM_DATA_OUT = read_data;
-    always @ (posedge clk_400m or negedge rst_n) begin
-        if(!rst_n)begin 
-            DEMUX_ADD0<=0; DEMUX_ADD1<=0; DEMUX_ADD2<=0; 
-            RWL_DEC_ADD0<=0; RWL_DEC_ADD1<=0; RWL_DEC_ADD2<=0; RWL_DEC_ADD3<=0; RWL_DEC_ADD4<=0; RWL_DEC_ADD5<=0;
-            RD_EN_pre<=0; REF_WWL<=1;
-            RD_DONE<=0;
+    // reg CLK_out_RD;
+    // reg read_data; // DRAM寄存数据
+    reg PC_DATA_CLK;
+    reg PC_DATA_CLK_INH; // 一直为低电平
+    reg PC_DATA_SHLD;
+    //PC并转串控制信号 PC[0]=clk PC[1]=SR/LD# PC[2]=CLK_INV
+    assign PC_data = {PC_DATA_CLK_INH, PC_DATA_SHLD, PC_DATA_CLK}; 
+    always @(posedge clk_400m or negedge rst_n) begin
+        if(!rst_n)begin
+            DRAM_DATA_OUT1 <= 8'd0; DRAM_DATA_OUT2 <= 8'd0; DRAM_DATA_OUT3 <= 8'd0; DRAM_DATA_OUT4 <= 8'd0; DRAM_DATA_OUT5 <= 8'd0; DRAM_DATA_OUT6 <= 8'd0; DRAM_DATA_OUT7 <= 8'd0; DRAM_DATA_OUT8 <= 8'd0; 
+            DRAM_DATA_OUT9 <= 8'd0; DRAM_DATA_OUT10 <= 8'd0; DRAM_DATA_OUT11 <= 8'd0; DRAM_DATA_OUT12 <= 8'd0; DRAM_DATA_OUT13 <= 8'd0; DRAM_DATA_OUT14 <= 8'd0; DRAM_DATA_OUT15 <= 8'd0; DRAM_DATA_OUT16 <= 8'd0;
+            RD_DONE <= 1'b0; RD_EN_pre <= 1'b0; REF_WWL <= 1'b1;
+            PC_R_AD <= 2'd0; R_AD <= 16'd0;
+            // PC_DATA串转并控制信号
+            PC_DATA_CLK <= 1'b0;
+            PC_DATA_CLK_INH <= 1'b0;
+            PC_DATA_SHLD <= 1'b0;
         end
         else begin
             if ( IO_EN_FLAG && (IO_MODEL_r == 2'b10) ) begin
                 case(counter_work)
-                7'd0:   begin
-                        DEMUX_ADD0<=0; DEMUX_ADD1<=0; DEMUX_ADD2<=0; 
-                        RWL_DEC_ADD0<=0; RWL_DEC_ADD1<=0; RWL_DEC_ADD2<=0; RWL_DEC_ADD3<=0; RWL_DEC_ADD4<=0; RWL_DEC_ADD5<=0;
-                        RD_EN_pre<=0; RD_DONE<=0;REF_WWL<=1;
+                13'd0: begin
+                    DRAM_DATA_OUT1 <= 8'd0; DRAM_DATA_OUT2 <= 8'd0; DRAM_DATA_OUT3 <= 8'd0; DRAM_DATA_OUT4 <= 8'd0; DRAM_DATA_OUT5 <= 8'd0; DRAM_DATA_OUT6 <= 8'd0; DRAM_DATA_OUT7 <= 8'd0; DRAM_DATA_OUT8 <= 8'd0; 
+                    DRAM_DATA_OUT9 <= 8'd0; DRAM_DATA_OUT10 <= 8'd0; DRAM_DATA_OUT11 <= 8'd0; DRAM_DATA_OUT12 <= 8'd0; DRAM_DATA_OUT13 <= 8'd0; DRAM_DATA_OUT14 <= 8'd0; DRAM_DATA_OUT15 <= 8'd0; DRAM_DATA_OUT16 <= 8'd0;
+                    RD_DONE <= 1'b0; RD_EN_pre <= 1'b0; REF_WWL <= 1'b1;
+                    PC_R_AD <= 2'd0; R_AD <= 16'd0;
+                    PC_DATA_CLK <= 1'b0;
+                    PC_DATA_CLK_INH <= 1'b0;
+                    PC_DATA_SHLD <= 1'b0;
                 end
-                7'd1:   begin 
-                        DEMUX_ADD0<=DEMUX_ADD_r[0]; DEMUX_ADD1<=DEMUX_ADD_r[1]; DEMUX_ADD2<=DEMUX_ADD_r[2]; 
-                        RWL_DEC_ADD0<=RWL_DEC_ADD_r[0]; RWL_DEC_ADD1<=RWL_DEC_ADD_r[1]; RWL_DEC_ADD2<=RWL_DEC_ADD_r[2]; RWL_DEC_ADD3<=RWL_DEC_ADD_r[3]; RWL_DEC_ADD4<=RWL_DEC_ADD_r[4]; RWL_DEC_ADD5<=RWL_DEC_ADD_r[5];
-                        RD_EN_pre<=0; 
-                        end
-                7'd2:  begin end
-                7'd3:  begin end
-                // 通过address进行WWL写入地址控制，先写低32位然后再写高32位
-                // 一个时钟周期
-                7'd5:  begin end
-                7'd6:  begin REF_WWL<=0; RD_EN_pre<=1; end
-                7'd7:  begin RD_EN_pre<=0; end
-                7'd8:  begin REF_WWL<=1; end
-                7'd9:  begin read_data<=DRAM_data; RD_DONE<=1; end
-                7'd10: begin RD_DONE<=1;end
-                7'd11: begin RD_DONE<=1;end
-                7'd12: begin RD_DONE<=1;end
-                7'd13: begin RD_DONE<=0; end
-                default: begin
+                13'd1: begin
+                    R_AD[1] <=  DEMUX_ADD1 [1]; 
+                    R_AD[2] <=  DEMUX_ADD2 [1]; 
+                    R_AD[3] <=  DEMUX_ADD3 [1]; 
+                    R_AD[4] <=  DEMUX_ADD4 [1]; 
+                    R_AD[5] <=  DEMUX_ADD5 [1]; 
+                    R_AD[6] <=  DEMUX_ADD6 [1]; 
+                    R_AD[7] <=  DEMUX_ADD7 [1]; 
+                    R_AD[8] <=  DEMUX_ADD8 [1]; 
+                    R_AD[9] <=  DEMUX_ADD9 [1]; 
+                    R_AD[10] <= DEMUX_ADD10[1]; 
+                    R_AD[11] <= DEMUX_ADD11[1]; 
+                    R_AD[12] <= DEMUX_ADD12[1]; 
+                    R_AD[13] <= DEMUX_ADD13[1]; 
+                    R_AD[14] <= DEMUX_ADD14[1]; 
+                    R_AD[15] <= DEMUX_ADD15[1]; 
+                    R_AD[16] <= DEMUX_ADD16[1]; 
                 end
+                13'd20: begin PC_R_AD[1] <= 1'b1; end// 取消复位
+                13'd40: begin PC_R_AD[0] <= 1'b1; end // CLK上升沿 
+                13'd60: begin 
+                    PC_R_AD[1] <= 1'b0; 
+                    R_AD[1] <=  DEMUX_ADD1 [0]; 
+                    R_AD[2] <=  DEMUX_ADD2 [0]; 
+                    R_AD[3] <=  DEMUX_ADD3 [0]; 
+                    R_AD[4] <=  DEMUX_ADD4 [0]; 
+                    R_AD[5] <=  DEMUX_ADD5 [0]; 
+                    R_AD[6] <=  DEMUX_ADD6 [0]; 
+                    R_AD[7] <=  DEMUX_ADD7 [0]; 
+                    R_AD[8] <=  DEMUX_ADD8 [0]; 
+                    R_AD[9] <=  DEMUX_ADD9 [0]; 
+                    R_AD[10] <= DEMUX_ADD10[0]; 
+                    R_AD[11] <= DEMUX_ADD11[0]; 
+                    R_AD[12] <= DEMUX_ADD12[0]; 
+                    R_AD[13] <= DEMUX_ADD13[0]; 
+                    R_AD[14] <= DEMUX_ADD14[0]; 
+                    R_AD[15] <= DEMUX_ADD15[0]; 
+                    R_AD[16] <= DEMUX_ADD16[0];
+                end 
+                13'd80: begin PC_R_AD[0] <= 1'b1; end // CLK上升沿 
+                13'd100: begin 
+                    PC_R_AD[1] <= 1'b0; 
+                    R_AD[1] <=  RWL_DEC_ADD1 [5]; 
+                    R_AD[2] <=  RWL_DEC_ADD2 [5]; 
+                    R_AD[3] <=  RWL_DEC_ADD3 [5]; 
+                    R_AD[4] <=  RWL_DEC_ADD4 [5]; 
+                    R_AD[5] <=  RWL_DEC_ADD5 [5]; 
+                    R_AD[6] <=  RWL_DEC_ADD6 [5]; 
+                    R_AD[7] <=  RWL_DEC_ADD7 [5]; 
+                    R_AD[8] <=  RWL_DEC_ADD8 [5]; 
+                    R_AD[9] <=  RWL_DEC_ADD9 [5]; 
+                    R_AD[10] <= RWL_DEC_ADD10[5]; 
+                    R_AD[11] <= RWL_DEC_ADD11[5]; 
+                    R_AD[12] <= RWL_DEC_ADD12[5]; 
+                    R_AD[13] <= RWL_DEC_ADD13[5]; 
+                    R_AD[14] <= RWL_DEC_ADD14[5]; 
+                    R_AD[15] <= RWL_DEC_ADD15[5]; 
+                    R_AD[16] <= RWL_DEC_ADD16[5];                     
+                end 
+                13'd120: begin PC_R_AD[0] <= 1'b1; end // CLK上升沿 
+                13'd140: begin 
+                    PC_R_AD[1] <= 1'b0; 
+                    R_AD[1] <=  RWL_DEC_ADD1 [4]; 
+                    R_AD[2] <=  RWL_DEC_ADD2 [4]; 
+                    R_AD[3] <=  RWL_DEC_ADD3 [4]; 
+                    R_AD[4] <=  RWL_DEC_ADD4 [4]; 
+                    R_AD[5] <=  RWL_DEC_ADD5 [4]; 
+                    R_AD[6] <=  RWL_DEC_ADD6 [4]; 
+                    R_AD[7] <=  RWL_DEC_ADD7 [4]; 
+                    R_AD[8] <=  RWL_DEC_ADD8 [4]; 
+                    R_AD[9] <=  RWL_DEC_ADD9 [4]; 
+                    R_AD[10] <= RWL_DEC_ADD10[4]; 
+                    R_AD[11] <= RWL_DEC_ADD11[4]; 
+                    R_AD[12] <= RWL_DEC_ADD12[4]; 
+                    R_AD[13] <= RWL_DEC_ADD13[4]; 
+                    R_AD[14] <= RWL_DEC_ADD14[4]; 
+                    R_AD[15] <= RWL_DEC_ADD15[4]; 
+                    R_AD[16] <= RWL_DEC_ADD16[4];                     
+                end 
+                13'd160: begin PC_R_AD[0] <= 1'b1; end // CLK上升沿 
+                13'd180: begin 
+                    PC_R_AD[1] <= 1'b0; 
+                    R_AD[1] <=  RWL_DEC_ADD1 [3]; 
+                    R_AD[2] <=  RWL_DEC_ADD2 [3]; 
+                    R_AD[3] <=  RWL_DEC_ADD3 [3]; 
+                    R_AD[4] <=  RWL_DEC_ADD4 [3]; 
+                    R_AD[5] <=  RWL_DEC_ADD5 [3]; 
+                    R_AD[6] <=  RWL_DEC_ADD6 [3]; 
+                    R_AD[7] <=  RWL_DEC_ADD7 [3]; 
+                    R_AD[8] <=  RWL_DEC_ADD8 [3]; 
+                    R_AD[9] <=  RWL_DEC_ADD9 [3]; 
+                    R_AD[10] <= RWL_DEC_ADD10[3]; 
+                    R_AD[11] <= RWL_DEC_ADD11[3]; 
+                    R_AD[12] <= RWL_DEC_ADD12[3]; 
+                    R_AD[13] <= RWL_DEC_ADD13[3]; 
+                    R_AD[14] <= RWL_DEC_ADD14[3]; 
+                    R_AD[15] <= RWL_DEC_ADD15[3]; 
+                    R_AD[16] <= RWL_DEC_ADD16[3];                     
+                end 
+                13'd200: begin PC_R_AD[0] <= 1'b1; end // CLK上升沿 
+                13'd220: begin 
+                    PC_R_AD[1] <= 1'b0; 
+                    R_AD[1] <=  RWL_DEC_ADD1 [2]; 
+                    R_AD[2] <=  RWL_DEC_ADD2 [2]; 
+                    R_AD[3] <=  RWL_DEC_ADD3 [2]; 
+                    R_AD[4] <=  RWL_DEC_ADD4 [2]; 
+                    R_AD[5] <=  RWL_DEC_ADD5 [2]; 
+                    R_AD[6] <=  RWL_DEC_ADD6 [2]; 
+                    R_AD[7] <=  RWL_DEC_ADD7 [2]; 
+                    R_AD[8] <=  RWL_DEC_ADD8 [2]; 
+                    R_AD[9] <=  RWL_DEC_ADD9 [2]; 
+                    R_AD[10] <= RWL_DEC_ADD10[2]; 
+                    R_AD[11] <= RWL_DEC_ADD11[2]; 
+                    R_AD[12] <= RWL_DEC_ADD12[2]; 
+                    R_AD[13] <= RWL_DEC_ADD13[2]; 
+                    R_AD[14] <= RWL_DEC_ADD14[2]; 
+                    R_AD[15] <= RWL_DEC_ADD15[2]; 
+                    R_AD[16] <= RWL_DEC_ADD16[2];                     
+                end 
+                13'd240: begin PC_R_AD[0] <= 1'b1; end // CLK上升沿 
+                13'd260: begin 
+                    PC_R_AD[1] <= 1'b0; 
+                    R_AD[1] <=  RWL_DEC_ADD1 [1]; 
+                    R_AD[2] <=  RWL_DEC_ADD2 [1]; 
+                    R_AD[3] <=  RWL_DEC_ADD3 [1]; 
+                    R_AD[4] <=  RWL_DEC_ADD4 [1]; 
+                    R_AD[5] <=  RWL_DEC_ADD5 [1]; 
+                    R_AD[6] <=  RWL_DEC_ADD6 [1]; 
+                    R_AD[7] <=  RWL_DEC_ADD7 [1]; 
+                    R_AD[8] <=  RWL_DEC_ADD8 [1]; 
+                    R_AD[9] <=  RWL_DEC_ADD9 [1]; 
+                    R_AD[10] <= RWL_DEC_ADD10[1]; 
+                    R_AD[11] <= RWL_DEC_ADD11[1]; 
+                    R_AD[12] <= RWL_DEC_ADD12[1]; 
+                    R_AD[13] <= RWL_DEC_ADD13[1]; 
+                    R_AD[14] <= RWL_DEC_ADD14[1]; 
+                    R_AD[15] <= RWL_DEC_ADD15[1]; 
+                    R_AD[16] <= RWL_DEC_ADD16[1];                     
+                end 
+                13'd280: begin PC_R_AD[0] <= 1'b1; end // CLK上升沿 
+                13'd300: begin 
+                    PC_R_AD[1] <= 1'b0; 
+                    R_AD[1] <=  RWL_DEC_ADD1 [0]; 
+                    R_AD[2] <=  RWL_DEC_ADD2 [0]; 
+                    R_AD[3] <=  RWL_DEC_ADD3 [0]; 
+                    R_AD[4] <=  RWL_DEC_ADD4 [0]; 
+                    R_AD[5] <=  RWL_DEC_ADD5 [0]; 
+                    R_AD[6] <=  RWL_DEC_ADD6 [0]; 
+                    R_AD[7] <=  RWL_DEC_ADD7 [0]; 
+                    R_AD[8] <=  RWL_DEC_ADD8 [0]; 
+                    R_AD[9] <=  RWL_DEC_ADD9 [0]; 
+                    R_AD[10] <= RWL_DEC_ADD10[0]; 
+                    R_AD[11] <= RWL_DEC_ADD11[0]; 
+                    R_AD[12] <= RWL_DEC_ADD12[0]; 
+                    R_AD[13] <= RWL_DEC_ADD13[0]; 
+                    R_AD[14] <= RWL_DEC_ADD14[0]; 
+                    R_AD[15] <= RWL_DEC_ADD15[0]; 
+                    R_AD[16] <= RWL_DEC_ADD16[0];                     
+                end 
+                13'd320: begin PC_R_AD[0] <= 1'b1; end // CLK上升沿
+                13'd340: begin PC_R_AD[0] <= 1'b0; end
+                13'd341: begin end
+                13'd342: begin end
+                13'd341: begin REF_WWL<=0; RD_EN_pre<=1; end
+                13'd342: begin RD_EN_pre<=0; end
+                13'd343: begin REF_WWL<=1; end
+                // 位串行寄存输出数据
+                // PC_DATA_CLK <= 1'b0;
+                // PC_DATA_CLK_INH <= 1'b0;
+                // PC_DATA_SHLD <= 1'b0;
+                // SH/LD保持一段时间来寄存输出 保持10ns以上
+                13'd344: begin end
+                13'd345: begin end
+                13'd346: begin end
+                13'd347: begin end
+                13'd348: begin end
+                13'd349: begin end
+                13'd350: begin 
+                    PC_DATA_CLK <= 1'b0;
+                    DRAM_DATA_OUT1 [0] <= DRAM16_data[1];
+                    DRAM_DATA_OUT2 [0] <= DRAM16_data[2];
+                    DRAM_DATA_OUT3 [0] <= DRAM16_data[3];
+                    DRAM_DATA_OUT4 [0] <= DRAM16_data[4];
+                    DRAM_DATA_OUT5 [0] <= DRAM16_data[5];
+                    DRAM_DATA_OUT6 [0] <= DRAM16_data[6];
+                    DRAM_DATA_OUT7 [0] <= DRAM16_data[7];
+                    DRAM_DATA_OUT8 [0] <= DRAM16_data[8];
+                    DRAM_DATA_OUT9 [0] <= DRAM16_data[9];
+                    DRAM_DATA_OUT10[0] <= DRAM16_data[10];
+                    DRAM_DATA_OUT11[0] <= DRAM16_data[11];
+                    DRAM_DATA_OUT12[0] <= DRAM16_data[12];
+                    DRAM_DATA_OUT13[0] <= DRAM16_data[13];
+                    DRAM_DATA_OUT14[0] <= DRAM16_data[14];
+                    DRAM_DATA_OUT15[0] <= DRAM16_data[15];
+                    DRAM_DATA_OUT16[0] <= DRAM16_data[16];
+                end
+                13'd370: begin PC_DATA_CLK <= 1'b1; end
+                13'd390: begin 
+                    PC_DATA_CLK <= 1'b0;
+                    DRAM_DATA_OUT1 [1] <= DRAM16_data[1];
+                    DRAM_DATA_OUT2 [1] <= DRAM16_data[2];
+                    DRAM_DATA_OUT3 [1] <= DRAM16_data[3];
+                    DRAM_DATA_OUT4 [1] <= DRAM16_data[4];
+                    DRAM_DATA_OUT5 [1] <= DRAM16_data[5];
+                    DRAM_DATA_OUT6 [1] <= DRAM16_data[6];
+                    DRAM_DATA_OUT7 [1] <= DRAM16_data[7];
+                    DRAM_DATA_OUT8 [1] <= DRAM16_data[8];
+                    DRAM_DATA_OUT9 [1] <= DRAM16_data[9];
+                    DRAM_DATA_OUT10[1] <= DRAM16_data[10];
+                    DRAM_DATA_OUT11[1] <= DRAM16_data[11];
+                    DRAM_DATA_OUT12[1] <= DRAM16_data[12];
+                    DRAM_DATA_OUT13[1] <= DRAM16_data[13];
+                    DRAM_DATA_OUT14[1] <= DRAM16_data[14];
+                    DRAM_DATA_OUT15[1] <= DRAM16_data[15];
+                    DRAM_DATA_OUT16[1] <= DRAM16_data[16];
+                end
+                13'd410: begin PC_DATA_CLK <= 1'b1; end
+                13'd430: begin 
+                    PC_DATA_CLK <= 1'b0;
+                    DRAM_DATA_OUT1 [2] <= DRAM16_data[1];
+                    DRAM_DATA_OUT2 [2] <= DRAM16_data[2];
+                    DRAM_DATA_OUT3 [2] <= DRAM16_data[3];
+                    DRAM_DATA_OUT4 [2] <= DRAM16_data[4];
+                    DRAM_DATA_OUT5 [2] <= DRAM16_data[5];
+                    DRAM_DATA_OUT6 [2] <= DRAM16_data[6];
+                    DRAM_DATA_OUT7 [2] <= DRAM16_data[7];
+                    DRAM_DATA_OUT8 [2] <= DRAM16_data[8];
+                    DRAM_DATA_OUT9 [2] <= DRAM16_data[9];
+                    DRAM_DATA_OUT10[2] <= DRAM16_data[10];
+                    DRAM_DATA_OUT11[2] <= DRAM16_data[11];
+                    DRAM_DATA_OUT12[2] <= DRAM16_data[12];
+                    DRAM_DATA_OUT13[2] <= DRAM16_data[13];
+                    DRAM_DATA_OUT14[2] <= DRAM16_data[14];
+                    DRAM_DATA_OUT15[2] <= DRAM16_data[15];
+                    DRAM_DATA_OUT16[2] <= DRAM16_data[16];
+                end
+                13'd450: begin PC_DATA_CLK <= 1'b1; end
+                13'd470: begin 
+                    PC_DATA_CLK <= 1'b0;
+                    DRAM_DATA_OUT1 [3] <= DRAM16_data[1];
+                    DRAM_DATA_OUT2 [3] <= DRAM16_data[2];
+                    DRAM_DATA_OUT3 [3] <= DRAM16_data[3];
+                    DRAM_DATA_OUT4 [3] <= DRAM16_data[4];
+                    DRAM_DATA_OUT5 [3] <= DRAM16_data[5];
+                    DRAM_DATA_OUT6 [3] <= DRAM16_data[6];
+                    DRAM_DATA_OUT7 [3] <= DRAM16_data[7];
+                    DRAM_DATA_OUT8 [3] <= DRAM16_data[8];
+                    DRAM_DATA_OUT9 [3] <= DRAM16_data[9];
+                    DRAM_DATA_OUT10[3] <= DRAM16_data[10];
+                    DRAM_DATA_OUT11[3] <= DRAM16_data[11];
+                    DRAM_DATA_OUT12[3] <= DRAM16_data[12];
+                    DRAM_DATA_OUT13[3] <= DRAM16_data[13];
+                    DRAM_DATA_OUT14[3] <= DRAM16_data[14];
+                    DRAM_DATA_OUT15[3] <= DRAM16_data[15];
+                    DRAM_DATA_OUT16[3] <= DRAM16_data[16];
+                end
+                13'd490: begin PC_DATA_CLK <= 1'b1; end
+                13'd510: begin 
+                    PC_DATA_CLK <= 1'b0;
+                    DRAM_DATA_OUT1 [4] <= DRAM16_data[1];
+                    DRAM_DATA_OUT2 [4] <= DRAM16_data[2];
+                    DRAM_DATA_OUT3 [4] <= DRAM16_data[3];
+                    DRAM_DATA_OUT4 [4] <= DRAM16_data[4];
+                    DRAM_DATA_OUT5 [4] <= DRAM16_data[5];
+                    DRAM_DATA_OUT6 [4] <= DRAM16_data[6];
+                    DRAM_DATA_OUT7 [4] <= DRAM16_data[7];
+                    DRAM_DATA_OUT8 [4] <= DRAM16_data[8];
+                    DRAM_DATA_OUT9 [4] <= DRAM16_data[9];
+                    DRAM_DATA_OUT10[4] <= DRAM16_data[10];
+                    DRAM_DATA_OUT11[4] <= DRAM16_data[11];
+                    DRAM_DATA_OUT12[4] <= DRAM16_data[12];
+                    DRAM_DATA_OUT13[4] <= DRAM16_data[13];
+                    DRAM_DATA_OUT14[4] <= DRAM16_data[14];
+                    DRAM_DATA_OUT15[4] <= DRAM16_data[15];
+                    DRAM_DATA_OUT16[4] <= DRAM16_data[16];
+                end
+                13'd530: begin PC_DATA_CLK <= 1'b1; end
+                13'd550: begin 
+                    PC_DATA_CLK <= 1'b0;
+                    DRAM_DATA_OUT1 [5] <= DRAM16_data[1];
+                    DRAM_DATA_OUT2 [5] <= DRAM16_data[2];
+                    DRAM_DATA_OUT3 [5] <= DRAM16_data[3];
+                    DRAM_DATA_OUT4 [5] <= DRAM16_data[4];
+                    DRAM_DATA_OUT5 [5] <= DRAM16_data[5];
+                    DRAM_DATA_OUT6 [5] <= DRAM16_data[6];
+                    DRAM_DATA_OUT7 [5] <= DRAM16_data[7];
+                    DRAM_DATA_OUT8 [5] <= DRAM16_data[8];
+                    DRAM_DATA_OUT9 [5] <= DRAM16_data[9];
+                    DRAM_DATA_OUT10[5] <= DRAM16_data[10];
+                    DRAM_DATA_OUT11[5] <= DRAM16_data[11];
+                    DRAM_DATA_OUT12[5] <= DRAM16_data[12];
+                    DRAM_DATA_OUT13[5] <= DRAM16_data[13];
+                    DRAM_DATA_OUT14[5] <= DRAM16_data[14];
+                    DRAM_DATA_OUT15[5] <= DRAM16_data[15];
+                    DRAM_DATA_OUT16[5] <= DRAM16_data[16];
+                end
+                13'd570: begin PC_DATA_CLK <= 1'b1; end
+                13'd590: begin 
+                    PC_DATA_CLK <= 1'b0;
+                    DRAM_DATA_OUT1 [6] <= DRAM16_data[1];
+                    DRAM_DATA_OUT2 [6] <= DRAM16_data[2];
+                    DRAM_DATA_OUT3 [6] <= DRAM16_data[3];
+                    DRAM_DATA_OUT4 [6] <= DRAM16_data[4];
+                    DRAM_DATA_OUT5 [6] <= DRAM16_data[5];
+                    DRAM_DATA_OUT6 [6] <= DRAM16_data[6];
+                    DRAM_DATA_OUT7 [6] <= DRAM16_data[7];
+                    DRAM_DATA_OUT8 [6] <= DRAM16_data[8];
+                    DRAM_DATA_OUT9 [6] <= DRAM16_data[9];
+                    DRAM_DATA_OUT10[6] <= DRAM16_data[10];
+                    DRAM_DATA_OUT11[6] <= DRAM16_data[11];
+                    DRAM_DATA_OUT12[6] <= DRAM16_data[12];
+                    DRAM_DATA_OUT13[6] <= DRAM16_data[13];
+                    DRAM_DATA_OUT14[6] <= DRAM16_data[14];
+                    DRAM_DATA_OUT15[6] <= DRAM16_data[15];
+                    DRAM_DATA_OUT16[6] <= DRAM16_data[16];
+                end
+                13'd610: begin PC_DATA_CLK <= 1'b1; end
+                13'd630: begin 
+                    PC_DATA_CLK <= 1'b0;
+                    DRAM_DATA_OUT1 [7] <= DRAM16_data[1];
+                    DRAM_DATA_OUT2 [7] <= DRAM16_data[2];
+                    DRAM_DATA_OUT3 [7] <= DRAM16_data[3];
+                    DRAM_DATA_OUT4 [7] <= DRAM16_data[4];
+                    DRAM_DATA_OUT5 [7] <= DRAM16_data[5];
+                    DRAM_DATA_OUT6 [7] <= DRAM16_data[6];
+                    DRAM_DATA_OUT7 [7] <= DRAM16_data[7];
+                    DRAM_DATA_OUT8 [7] <= DRAM16_data[8];
+                    DRAM_DATA_OUT9 [7] <= DRAM16_data[9];
+                    DRAM_DATA_OUT10[7] <= DRAM16_data[10];
+                    DRAM_DATA_OUT11[7] <= DRAM16_data[11];
+                    DRAM_DATA_OUT12[7] <= DRAM16_data[12];
+                    DRAM_DATA_OUT13[7] <= DRAM16_data[13];
+                    DRAM_DATA_OUT14[7] <= DRAM16_data[14];
+                    DRAM_DATA_OUT15[7] <= DRAM16_data[15];
+                    DRAM_DATA_OUT16[7] <= DRAM16_data[16];
+                end
+                // 读出完毕
+                13'd632: begin RD_DONE <= 1; end
+                13'd636: begin RD_DONE <= 0; end
+                default: begin end
                 endcase
-            end
-            else begin
-                DEMUX_ADD0<=0; DEMUX_ADD1<=0; DEMUX_ADD2<=0; 
-                RWL_DEC_ADD0<=0; RWL_DEC_ADD1<=0; RWL_DEC_ADD2<=0; RWL_DEC_ADD3<=0; RWL_DEC_ADD4<=0; RWL_DEC_ADD5<=0;
-                RD_EN_pre<=0; RD_DONE<=0; REF_WWL<=1;
             end
         end
     end
-    assign LIM_IN=DATA_IN;
-    assign LIM_SEL_AD1=CIM_model[1];
-    assign LIM_SEL_AD0=CIM_model[0];
+    assign LIM_IN=DATA_IN;     // LIM_IN, LIM输入 16块芯片的算输入数据
+    assign LIM_SEL=CIM_model;  // 存算模式选择
     // 插入逻辑门延时  具体延时多少是试出来的
     (*dont_touch="yes"*)assign RD_EN1=RD_EN_pre&(!WR_flag);
     (*dont_touch="yes"*)assign RD_EN2=RD_EN1&(!WR_flag);
@@ -1985,4 +2503,5 @@ module DRAM_write_read_16core(
     (*dont_touch="yes"*)assign RD_EN7=RD_EN6&(!WR_flag);
     (*dont_touch="yes"*)assign RD_EN8=RD_EN7&(!WR_flag);
     (*dont_touch="yes"*)assign VSAEN=RD_EN8&(!WR_flag);
+
 endmodule
