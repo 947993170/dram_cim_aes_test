@@ -5,15 +5,25 @@ module AES_DRAM_Top(
     input  wire         CLK,
     input  wire         RSTn,
     input  wire         EN,
-    input  wire [127:0] Kin,
-    input  wire [127:0] Din,
+//    input  wire [127:0] Kin,
+//    input  wire [127:0] Din,
     input  wire         KDrdy,
-    output wire [127:0] Dout,
-    output wire         Dvld,
-    output wire         Kvld,
-    output wire         BSY,
-    output reg          Trigger,
+//    output wire [127:0] Dout,
+//    output wire         Dvld,
+//    output wire         Kvld,
+//    output wire         BSY,
+//    output reg          Trigger,
     // DRAM outputs to FPGA
+    input  wire         SW1,
+    input  wire         SW4,
+    input  wire         SW5,
+    input  wire         SW6,
+    input  wire         SW7,
+    input  wire         SW8,
+    input  wire         SW9,
+    input  wire         SW10,
+    input  wire         SW11,
+    input  wire         SW12,
     input  wire         ROUT_1v8_1,
     input  wire         ROUT_1v8_2,
     input  wire         ROUT_1v8_3,
@@ -99,6 +109,12 @@ module AES_DRAM_Top(
     output wire         LIMIN_1v8_16
 
 );
+    wire [127:0] Dout;
+    wire         Dvld;
+    wire         Kvld;
+    wire         BSY;
+    reg          Trigger;
+
     wire clk_400m;
     wire clk_100m;
     
@@ -159,7 +175,8 @@ module AES_DRAM_Top(
         .CLK   (clk_100m),
         .RSTn  (RSTn),
         .EN    (EN && init_done),
-        .Din   (Din),
+//        .Din   (Din),
+        .Din   (128'h000102030405060708090a0b0c0d0e0f),
         .KDrdy (KDrdy),
         .RIO_00(dram_byte1), .RIO_01(dram_byte2), .RIO_02(dram_byte3), .RIO_03(dram_byte4),
         .RIO_04(dram_byte5), .RIO_05(dram_byte6), .RIO_06(dram_byte7), .RIO_07(dram_byte8),
@@ -195,7 +212,8 @@ module AES_DRAM_Top(
         .RSTn      (RSTn),
         .wr_done   (wr_done),
         .START     (EN),
-        .Kin       (Kin),
+//        .Kin       (Kin),
+        .Kin       (128'h00112233445566778899aabbccddeeff),
         .DONE      (init_done),
         .IO_EN     (init_io_en),
         .ADDR      (init_addr),
