@@ -20,7 +20,7 @@ module AES_DRAM_Top_tb;
     reg EN;
     reg [127:0] Kin;
     reg [127:0] Din;
-    reg Kdrdy;
+    reg KDrdy;
 
     // DRAM array outputs towards FPGA (currently tied to zero)
     reg ROUT_1v8_1;
@@ -52,9 +52,23 @@ module AES_DRAM_Top_tb;
         .CLK        (CLK),
         .RSTn       (RSTn),
         .EN         (EN),
-        .Kin        (Kin),
-        .Din        (Din),
-        .Kdrdy      (Kdrdy),
+//        .Kin        (Kin),
+//        .Din        (Din),
+        .KDrdy      (KDrdy),
+//        .Dout       (Dout),
+//        .Kvld       (Kvld),
+//        .Dvld       (Dvld),
+//        .BSY        (BSY),
+//        .Trigger    (Trigger),
+        .SW4 (1'b0),
+        .SW5 (1'b0),
+        .SW6 (1'b0),
+        .SW7 (1'b0),
+        .SW8 (1'b0),
+        .SW9 (1'b0),
+        .SW10 (1'b0),
+        .SW11 (1'b0),
+        .SW12 (1'b0),
         .ROUT_1v8_1 (ROUT_1v8_1),
         .ROUT_1v8_2 (ROUT_1v8_2),
         .ROUT_1v8_3 (ROUT_1v8_3),
@@ -88,12 +102,7 @@ module AES_DRAM_Top_tb;
         .LIMIN_1v8_1(), .LIMIN_1v8_2(), .LIMIN_1v8_3(), .LIMIN_1v8_4(),
         .LIMIN_1v8_5(), .LIMIN_1v8_6(), .LIMIN_1v8_7(), .LIMIN_1v8_8(),
         .LIMIN_1v8_9(), .LIMIN_1v8_10(), .LIMIN_1v8_11(), .LIMIN_1v8_12(),
-        .LIMIN_1v8_13(), .LIMIN_1v8_14(), .LIMIN_1v8_15(), .LIMIN_1v8_16(),
-        .Dout       (Dout),
-        .Kvld       (Kvld),
-        .Dvld       (Dvld),
-        .BSY        (BSY),
-        .Trigger    (Trigger)
+        .LIMIN_1v8_13(), .LIMIN_1v8_14(), .LIMIN_1v8_15(), .LIMIN_1v8_16()
     );
 
     // clock generation
@@ -105,7 +114,7 @@ module AES_DRAM_Top_tb;
         // initialise inputs
         RSTn   = 0;
         EN     = 0;
-        Kdrdy  = 0;
+        KDrdy  = 0;
         Kin    = 128'h0;
         Din    = 128'h0;
         {ROUT_1v8_1, ROUT_1v8_2, ROUT_1v8_3, ROUT_1v8_4,
@@ -119,7 +128,7 @@ module AES_DRAM_Top_tb;
 
         // start initialization and encryption sequence
         EN    = 1;
-        Kdrdy = 1; // indicate key/data ready
+        KDrdy = 1; // indicate key/data ready
         Kin   = 128'h00112233445566778899aabbccddeeff;
         Din   = 128'h000102030405060708090a0b0c0d0e0f;
 
@@ -128,4 +137,3 @@ module AES_DRAM_Top_tb;
         $finish;
     end
 endmodule
-
