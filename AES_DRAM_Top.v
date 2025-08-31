@@ -178,6 +178,7 @@ module AES_DRAM_Top(
 //        .Din   (Din),
         .Din   (128'h000102030405060708090a0b0c0d0e0f),
         .KDrdy (KDrdy),
+        .RD_DONE(rd_done),
         .RIO_00(dram_byte1), .RIO_01(dram_byte2), .RIO_02(dram_byte3), .RIO_03(dram_byte4),
         .RIO_04(dram_byte5), .RIO_05(dram_byte6), .RIO_06(dram_byte7), .RIO_07(dram_byte8),
         .RIO_08(dram_byte9), .RIO_09(dram_byte10), .RIO_10(dram_byte11), .RIO_11(dram_byte12),
