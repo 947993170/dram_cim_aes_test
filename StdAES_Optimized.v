@@ -4,14 +4,14 @@ module StdAES_Optimized
     // inputs
     input  wire         CLK,
     input  wire         RSTn,
-    input  wire         EN,
+(* mark_debug = "true" *)    input  wire         EN,
     input  wire [127:0] Din,
-    input  wire         KDrdy,
+(* mark_debug = "true" *)    input  wire         KDrdy,
 
-    input  wire [7:0]   RIO_00,
-    input  wire [7:0]   RIO_01,
-    input  wire [7:0]   RIO_02,
-    input  wire [7:0]   RIO_03,
+(* mark_debug = "true" *)    input  wire [7:0]   RIO_00,
+(* mark_debug = "true" *)    input  wire [7:0]   RIO_01,
+(* mark_debug = "true" *)    input  wire [7:0]   RIO_02,
+(* mark_debug = "true" *)    input  wire [7:0]   RIO_03,
     input  wire [7:0]   RIO_04,
     input  wire [7:0]   RIO_05,
     input  wire [7:0]   RIO_06,
@@ -20,10 +20,10 @@ module StdAES_Optimized
     input  wire [7:0]   RIO_09,
     input  wire [7:0]   RIO_10,
     input  wire [7:0]   RIO_11,
-    input  wire [7:0]   RIO_12,
-    input  wire [7:0]   RIO_13,
-    input  wire [7:0]   RIO_14,
-    input  wire [7:0]   RIO_15,
+(* mark_debug = "true" *)    input  wire [7:0]   RIO_12,
+(* mark_debug = "true" *)    input  wire [7:0]   RIO_13,
+(* mark_debug = "true" *)    input  wire [7:0]   RIO_14,
+(* mark_debug = "true" *)    input  wire [7:0]   RIO_15,
 
     // outputs
     output reg  [127:0] Dout,
@@ -31,6 +31,8 @@ module StdAES_Optimized
     output reg          Dvld,
     output reg          BSY,
 
+	output reg IO_EN,
+    input wire RD_DONE,
     output wire [2:0]   DEMUX_ADD_00,
     output wire [2:0]   DEMUX_ADD_01,
     output wire [2:0]   DEMUX_ADD_02,
@@ -65,9 +67,9 @@ module StdAES_Optimized
     output wire [5:0]   RWL_DEC_ADD_14,
     output wire [5:0]   RWL_DEC_ADD_15,
 
-    output wire [15:0]  IN,
+(* mark_debug = "true"*)    output wire [15:0]  IN,
     output wire         SEL_AD1,
-    output wire         SEL_AD0
+(* mark_debug = "true"*)    output wire         SEL_AD0
 
 );
 
@@ -110,16 +112,25 @@ module StdAES_Optimized
     localparam [1:0] ST_OUT    = 2'd4;  // 1 cycle
 
     reg [1:0] current_state, next_state;
+	reg [1:0] prev_state; // track previous FSM state for pulsed IO_EN
+
+	
     reg [3:0] grp_idx;    // 0..10
     reg [3:0] read_cnt;   // 0..7
 	reg [3:0] read_cnt_dff;   // 0..7
 
 
     // ark \u5bc4\u5b58\u5668\uff1a8 \u62cd\u91c7?? bit7..0
-    reg [7:0] ark_q_00, ark_q_01, ark_q_02, ark_q_03;
+(* mark_debug = "true" *)   reg [7:0] ark_q_00;
+(* mark_debug = "true" *)	reg	[7:0] ark_q_01;
+(* mark_debug = "true" *)	reg [7:0] ark_q_02;
+(* mark_debug = "true" *)	reg [7:0] ark_q_03;
     reg [7:0] ark_q_04, ark_q_05, ark_q_06, ark_q_07;
     reg [7:0] ark_q_08, ark_q_09, ark_q_10, ark_q_11;
-    reg [7:0] ark_q_12, ark_q_13, ark_q_14, ark_q_15;
+(* mark_debug = "true" *)   reg [7:0] ark_q_12;
+(* mark_debug = "true" *)	reg [7:0] ark_q_13;
+(* mark_debug = "true" *)	reg [7:0] ark_q_14;
+(* mark_debug = "true" *)	reg [7:0] ark_q_15;
 
     // \u67e5\u8868\u7ed3\u679c\u5bc4\u5b58
 //    reg [7:0] sbox_q_00, sbox_q_01, sbox_q_02, sbox_q_03;
@@ -141,6 +152,9 @@ module StdAES_Optimized
     // AES ??
     wire [127:0] dat_next;
     wire [127:0] src128 = use_datnext(grp_idx) ? dat_next : Din;
+	
+	
+
     // -------------------------------------------------
     // \u539f\u6709 Dvld/Kvld/BSY/counter/sel \u903b\u8f91\uff08\u672a\u6539\u52a8??
     // -------------------------------------------------
@@ -291,14 +305,45 @@ module StdAES_Optimized
                     read_cnt <= 4'd0;
                 end
                 ST_READ: begin
-                    read_cnt <= (read_cnt == 4'd8) ? 4'd0 : read_cnt + 4'd1;
+                    if (RD_DONE) begin
+                        read_cnt <= (read_cnt == 4'd8) ? 4'd0 : read_cnt + 4'd1;
+                    end
                 end
                 ST_LOOKUP: begin
-                    if (grp_idx < 4'd10)
+                    if (RD_DONE && grp_idx < 4'd10) begin
                         grp_idx <= grp_idx + 4'd1;
+                    end
                 end
                 default: ;
             endcase
+        end
+    end
+	
+	// ------------------------------------------------------------------
+    // Generate single-cycle IO_EN pulses for each DRAM read request. A
+    // pulse is issued when entering ST_READ, after every RD_DONE while more
+    // reads remain in ST_READ, and once when entering ST_LOOKUP.
+    // ------------------------------------------------------------------
+    always @(posedge CLK or posedge rst) begin
+        if (rst) begin
+            IO_EN      <= 1'b0;
+            prev_state <= ST_IDLE;
+        end else if (EN) begin
+            IO_EN      <= 1'b0; // default low
+            if ((prev_state != ST_READ) && (current_state == ST_READ)) begin
+                // first read of ST_READ
+                IO_EN <= 1'b1;
+            end else if ((current_state == ST_READ) && RD_DONE && (read_cnt_dff != 4'd7)) begin
+                // subsequent reads within ST_READ
+                IO_EN <= 1'b1;
+            end else if ((prev_state != ST_LOOKUP) && (current_state == ST_LOOKUP)) begin
+                // single read needed in ST_LOOKUP
+                IO_EN <= 1'b1;
+            end
+            prev_state <= current_state;
+        end else begin
+            IO_EN      <= 1'b0;
+            prev_state <= prev_state;
         end
     end
 
@@ -529,6 +574,26 @@ module StdAES_Optimized
 
     assign SEL_AD1 = 1'b0;
     assign SEL_AD0 = (current_state == ST_READ) ? 1'b1 :1'b0;
+	
+(* mark_debug = "true" *)	wire [8:0] RD_ADDR_00;
+(* mark_debug = "true" *)	wire [8:0] RD_ADDR_01;
+(* mark_debug = "true" *)	wire [8:0] RD_ADDR_02;
+(* mark_debug = "true" *)	wire [8:0] RD_ADDR_03;
+
+(* mark_debug = "true" *)	wire [8:0] RD_ADDR_12;
+(* mark_debug = "true" *)	wire [8:0] RD_ADDR_13;
+(* mark_debug = "true" *)	wire [8:0] RD_ADDR_14;
+(* mark_debug = "true" *)	wire [8:0] RD_ADDR_15;
+	
+	assign RD_ADDR_00 = {DEMUX_ADD_00,RWL_DEC_ADD_00};
+	assign RD_ADDR_01 = {DEMUX_ADD_01,RWL_DEC_ADD_01};
+	assign RD_ADDR_02 = {DEMUX_ADD_02,RWL_DEC_ADD_02};
+	assign RD_ADDR_03 = {DEMUX_ADD_03,RWL_DEC_ADD_03};
+	
+	assign RD_ADDR_12 = {DEMUX_ADD_12,RWL_DEC_ADD_12};
+	assign RD_ADDR_13 = {DEMUX_ADD_13,RWL_DEC_ADD_13};
+	assign RD_ADDR_14 = {DEMUX_ADD_14,RWL_DEC_ADD_14};
+	assign RD_ADDR_15 = {DEMUX_ADD_15,RWL_DEC_ADD_15};
 
 
 endmodule
