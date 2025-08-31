@@ -17,7 +17,7 @@ module DRAM_Key_Sbox_Init (
     input  wire [127:0] Kin,
     output reg         DONE,
     // signals driving the external DRAM controller
-    output wire        IO_EN,
+    output reg         IO_EN,
     output wire [5:0]  ADDR,
     output wire [63:0] WBL_DATA1,
     output wire [63:0] WBL_DATA2,
@@ -82,7 +82,6 @@ module DRAM_Key_Sbox_Init (
     reg [63:0] data9_reg, data10_reg, data11_reg, data12_reg;
     reg [63:0] data13_reg, data14_reg, data15_reg, data16_reg;
 
-    assign IO_EN     = active;
     assign ADDR      = addr_reg;
     assign WBL_DATA1  = data1_reg;
     assign WBL_DATA2  = data2_reg;
@@ -109,6 +108,7 @@ module DRAM_Key_Sbox_Init (
             active    <= 1'b0;
             addr_reg  <= 6'd0;
             DONE      <= 1'b0;
+            IO_EN     <= 1'b0;
             data1_reg <= 64'h0;
             data2_reg <= 64'h0;
             data3_reg <= 64'h0;
@@ -126,11 +126,13 @@ module DRAM_Key_Sbox_Init (
             data15_reg <= 64'h0;
             data16_reg <= 64'h0;
         end else begin
+            IO_EN <= 1'b0; // default low, pulse when starting a write
             if (START && !active) begin
                 // start streaming from address 0
                 active    <= 1'b1;
                 addr_reg  <= 6'd0;
                 DONE      <= 1'b0;
+                IO_EN     <= 1'b1; // pulse IO_EN to start first write
                 data1_reg  <= gen1;
                 data2_reg  <= gen2;
                 data3_reg  <= gen3;
@@ -154,6 +156,7 @@ module DRAM_Key_Sbox_Init (
                     DONE   <= 1'b1;
                 end else begin
                     addr_reg  <= addr_reg + 1'b1;
+                    IO_EN     <= 1'b1; // pulse for subsequent write
                     data1_reg  <= gen1;
                     data2_reg  <= gen2;
                     data3_reg  <= gen3;
