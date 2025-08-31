@@ -16,7 +16,7 @@ module AES_DRAM_Top(
 //    output wire         BSY,
 //    output reg          Trigger,
     // DRAM outputs to FPGA
-    input  wire         SW1,
+//    input  wire         SW1,
     input  wire         SW4,
     input  wire         SW5,
     input  wire         SW6,
@@ -133,34 +133,35 @@ module AES_DRAM_Top(
     wire [7:0]  dram_byte9,  dram_byte10, dram_byte11, dram_byte12;
     wire [7:0]  dram_byte13, dram_byte14, dram_byte15, dram_byte16;
 
-    wire        rd_done;
-    wire        wr_done;
-    wire [15:0] lim_in;
-    wire [2:0]  demux_add [0:15];
-    wire [5:0]  rwl_add   [0:15];
-    // Wires driving the DRAM controller outputs
-    wire [16:1] dram_din_w;
-    wire [16:1] dram_rad_w;
-    wire [16:1] dram_lim_w;
-    wire [1:0]  lim_sel_w;
-    wire        add_in_w;
-    wire        add_vld_w;
-    wire        data_vld_w;
-    wire        clk_out_w;
-    wire        wri_en_w;
-    wire        rd_en_w;
-    wire        vsaen_w;
-    wire        ref_wwl_w;
-    wire        dmx2_w;
-    wire [2:0]  pc_data_w;
-    wire [1:0]  pc_d_in_w;
-    wire [1:0]  pc_r_ad_w;
+(* mark_debug = "true" *)    wire        rd_done;
+(* mark_debug = "true" *)    wire        wr_done;
+(* mark_debug = "true" *)    wire [15:0] lim_in;
+                             wire [2:0]  demux_add [0:15];
+                             wire [5:0]  rwl_add   [0:15];
+                             // Wires driving the DRAM controller outputs
+(* mark_debug = "true" *)    wire [16:1] dram_din_w;
+(* mark_debug = "true" *)    wire [16:1] dram_rad_w;
+(* mark_debug = "true" *)    wire [16:1] dram_lim_w;
+(* mark_debug = "true" *)    wire [1:0]  lim_sel_w;
+(* mark_debug = "true" *)    wire        add_in_w;
+(* mark_debug = "true" *)    wire        add_vld_w;
+(* mark_debug = "true" *)    wire        data_vld_w;
+(* mark_debug = "true" *)    wire        clk_out_w;
+(* mark_debug = "true" *)    wire        wri_en_w;
+(* mark_debug = "true" *)    wire        rd_en_w;
+(* mark_debug = "true" *)    wire        vsaen_w;
+(* mark_debug = "true" *)    wire        ref_wwl_w;
+(* mark_debug = "true" *)    wire        dmx2_w;
+(* mark_debug = "true" *)    wire [2:0]  pc_data_w;
+(* mark_debug = "true" *)    wire [1:0]  pc_d_in_w;
+(* mark_debug = "true" *)    wire [1:0]  pc_r_ad_w;
 
     // Wires for key/SBOX initialization generator
     wire        init_io_en;
     wire [5:0]  init_addr;
     wire [63:0] init_wbl_data [0:15];
     wire        init_done;
+	wire        aes_io_en;
 
     IBUFDS #(
         .DIFF_TERM ("FALSE"),
@@ -199,6 +200,7 @@ module AES_DRAM_Top(
         .Dvld (Dvld),
         .BSY  (BSY),
         .RD_DONE (rd_done),
+		.IO_EN (aes_io_en)
         .DEMUX_ADD_00(demux_add[0]),  .DEMUX_ADD_01(demux_add[1]),
         .DEMUX_ADD_02(demux_add[2]),  .DEMUX_ADD_03(demux_add[3]),
         .DEMUX_ADD_04(demux_add[4]),  .DEMUX_ADD_05(demux_add[5]),
@@ -244,7 +246,7 @@ module AES_DRAM_Top(
     wire init_active = ~init_done;
 
     // Mux DRAM controller inputs based on current mode
-    wire        io_en_sel       = init_active ? init_io_en        : (EN && init_done);
+    wire        io_en_sel       = init_active ? init_io_en        : aes_io_en;
     wire [1:0]  io_model_sel    = init_active ? 2'b01             : 2'b10;
     wire [16:1] data_in_sel     = init_active ? 16'b0             : lim_in;
     wire [63:0] wbl_data_in1    = init_active ? init_wbl_data[0]  : 64'b0;
