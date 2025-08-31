@@ -2,7 +2,9 @@
 // controller.  External interface follows the naming and timing
 // convention described in the specification table and waveform.
 module AES_DRAM_Top(
-    input  wire         CLK,
+//    input  wire         CLK,
+    input wire CLK_p,
+    input wire CLK_n,
     input  wire         RSTn,
     input  wire         EN,
 //    input  wire [127:0] Kin,
@@ -160,6 +162,16 @@ module AES_DRAM_Top(
     wire [63:0] init_wbl_data [0:15];
     wire        init_done;
 
+    IBUFDS #(
+        .DIFF_TERM ("FALSE"),
+        .IBUF_LOW_PWR("TRUE"),
+        .IOSTANDARD("DEFAULT")
+    ) IBUFDS_inst (
+        .O (CLK),
+        .I (CLK_p),
+        .IB(CLK_n)
+    );
+
     clk_wiz_400m u_clk_wiz_400m(
          .clk_400m(clk_400m),
          .clk_100m(clk_100m),
@@ -186,6 +198,7 @@ module AES_DRAM_Top(
         .Kvld (Kvld),
         .Dvld (Dvld),
         .BSY  (BSY),
+        .RD_DONE (rd_done),
         .DEMUX_ADD_00(demux_add[0]),  .DEMUX_ADD_01(demux_add[1]),
         .DEMUX_ADD_02(demux_add[2]),  .DEMUX_ADD_03(demux_add[3]),
         .DEMUX_ADD_04(demux_add[4]),  .DEMUX_ADD_05(demux_add[5]),
