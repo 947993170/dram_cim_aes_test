@@ -7,6 +7,7 @@ module StdAES_Optimized
     input  wire         EN,
     input  wire [127:0] Din,
     input  wire         KDrdy,
+    input  wire         RD_DONE,
 
     input  wire [7:0]   RIO_00,
     input  wire [7:0]   RIO_01,
@@ -79,6 +80,9 @@ module StdAES_Optimized
     reg [127:0] dat;
     reg [3:0]   dcnt;
     reg [1:0]   sel;
+    // RD_DONE is a pulse from the DRAM controller indicating that read data
+    // is ready. Use it as a clock enable for all DRAM read related logic,
+    // so no additional valid register is required.
 
 
     // ?? RIO \u89c4\u8303\u6210\u987a\u5e8f\u4fe1\u53f7\uff08\u82e5\u4f60?? RIO_08/09\uff0c\u8bf7\u6620\u5c04\u66ff\u6362?? 8'h00??
@@ -112,7 +116,7 @@ module StdAES_Optimized
     reg [1:0] current_state, next_state;
     reg [3:0] grp_idx;    // 0..10
     reg [3:0] read_cnt;   // 0..7
-	reg [3:0] read_cnt_dff;   // 0..7
+    reg [3:0] read_cnt_dff;   // 0..7
 
 
     // ark \u5bc4\u5b58\u5668\uff1a8 \u62cd\u91c7?? bit7..0
@@ -291,11 +295,15 @@ module StdAES_Optimized
                     read_cnt <= 4'd0;
                 end
                 ST_READ: begin
-                    read_cnt <= (read_cnt == 4'd8) ? 4'd0 : read_cnt + 4'd1;
+                    if (RD_DONE)
+                        read_cnt <= (read_cnt == 4'd7) ? 4'd7 : read_cnt + 4'd1;
                 end
                 ST_LOOKUP: begin
-                    if (grp_idx < 4'd10)
-                        grp_idx <= grp_idx + 4'd1;
+                    if (RD_DONE) begin
+                        read_cnt <= 4'd0;
+                        if (grp_idx < 4'd10)
+                            grp_idx <= grp_idx + 4'd1;
+                    end
                 end
                 default: ;
             endcase
@@ -307,45 +315,64 @@ module StdAES_Optimized
         next_state = ST_IDLE;
         case (current_state)
             ST_IDLE   : next_state = (EN && KDrdy) ? ST_READ   : ST_IDLE;
-            ST_READ   : next_state = (read_cnt_dff == 4'd7) ? ST_LOOKUP : ST_READ;
-            ST_LOOKUP : next_state = (grp_idx == 4'd10) ? ST_OUT : ST_MIX;
-			ST_MIX    : next_state = ST_READ;
+            ST_READ   : next_state = (RD_DONE && read_cnt == 4'd7) ? ST_LOOKUP : ST_READ;
+            ST_LOOKUP : next_state = RD_DONE ? ((grp_idx == 4'd10) ? ST_OUT : ST_MIX) : ST_LOOKUP;
+                        ST_MIX    : next_state = ST_READ;
             ST_OUT    : next_state = ST_IDLE;
             default   : next_state = ST_IDLE;
         endcase
     end
-	
-	
+
+
     always @(posedge CLK or posedge rst) begin
         if (rst) begin
             read_cnt_dff <= 4'd0;
-        end else if (current_state == ST_READ) begin
-			read_cnt_dff <= read_cnt;
+        end else if (current_state == ST_READ && RD_DONE) begin
+            read_cnt_dff <= read_cnt;
         end else begin
-			read_cnt_dff <= 4'h0;
-		end
+            read_cnt_dff <= 4'h0;
+        end
     end
 	
 	always @(*) begin
 		case (current_state)
-			ST_READ: begin
-				demux_q_00 = get_demux_code(grp_idx); rwl_q_00 = get_row_code(grp_idx);
-				demux_q_01 = get_demux_code(grp_idx); rwl_q_01 = get_row_code(grp_idx);
-				demux_q_02 = get_demux_code(grp_idx); rwl_q_02 = get_row_code(grp_idx);
-				demux_q_03 = get_demux_code(grp_idx); rwl_q_03 = get_row_code(grp_idx);
-				demux_q_04 = get_demux_code(grp_idx); rwl_q_04 = get_row_code(grp_idx);
-				demux_q_05 = get_demux_code(grp_idx); rwl_q_05 = get_row_code(grp_idx);
-				demux_q_06 = get_demux_code(grp_idx); rwl_q_06 = get_row_code(grp_idx);
-				demux_q_07 = get_demux_code(grp_idx); rwl_q_07 = get_row_code(grp_idx);
-				demux_q_08 = get_demux_code(grp_idx); rwl_q_08 = get_row_code(grp_idx);
-				demux_q_09 = get_demux_code(grp_idx); rwl_q_09 = get_row_code(grp_idx);
-				demux_q_10 = get_demux_code(grp_idx); rwl_q_10 = get_row_code(grp_idx);
-				demux_q_11 = get_demux_code(grp_idx); rwl_q_11 = get_row_code(grp_idx);
-				demux_q_12 = get_demux_code(grp_idx); rwl_q_12 = get_row_code(grp_idx);
-				demux_q_13 = get_demux_code(grp_idx); rwl_q_13 = get_row_code(grp_idx);
-				demux_q_14 = get_demux_code(grp_idx); rwl_q_14 = get_row_code(grp_idx);
-				demux_q_15 = get_demux_code(grp_idx); rwl_q_15 = get_row_code(grp_idx);
-			end
+                       ST_READ: begin
+                               if (RD_DONE) begin
+                                       demux_q_00 = get_demux_code(grp_idx); rwl_q_00 = get_row_code(grp_idx);
+                                       demux_q_01 = get_demux_code(grp_idx); rwl_q_01 = get_row_code(grp_idx);
+                                       demux_q_02 = get_demux_code(grp_idx); rwl_q_02 = get_row_code(grp_idx);
+                                       demux_q_03 = get_demux_code(grp_idx); rwl_q_03 = get_row_code(grp_idx);
+                                       demux_q_04 = get_demux_code(grp_idx); rwl_q_04 = get_row_code(grp_idx);
+                                       demux_q_05 = get_demux_code(grp_idx); rwl_q_05 = get_row_code(grp_idx);
+                                       demux_q_06 = get_demux_code(grp_idx); rwl_q_06 = get_row_code(grp_idx);
+                                       demux_q_07 = get_demux_code(grp_idx); rwl_q_07 = get_row_code(grp_idx);
+                                       demux_q_08 = get_demux_code(grp_idx); rwl_q_08 = get_row_code(grp_idx);
+                                       demux_q_09 = get_demux_code(grp_idx); rwl_q_09 = get_row_code(grp_idx);
+                                       demux_q_10 = get_demux_code(grp_idx); rwl_q_10 = get_row_code(grp_idx);
+                                       demux_q_11 = get_demux_code(grp_idx); rwl_q_11 = get_row_code(grp_idx);
+                                       demux_q_12 = get_demux_code(grp_idx); rwl_q_12 = get_row_code(grp_idx);
+                                       demux_q_13 = get_demux_code(grp_idx); rwl_q_13 = get_row_code(grp_idx);
+                                       demux_q_14 = get_demux_code(grp_idx); rwl_q_14 = get_row_code(grp_idx);
+                                       demux_q_15 = get_demux_code(grp_idx); rwl_q_15 = get_row_code(grp_idx);
+                               end else begin
+                                       demux_q_00 = 3'b000; rwl_q_00 = 6'h00;
+                                       demux_q_01 = 3'b000; rwl_q_01 = 6'h00;
+                                       demux_q_02 = 3'b000; rwl_q_02 = 6'h00;
+                                       demux_q_03 = 3'b000; rwl_q_03 = 6'h00;
+                                       demux_q_04 = 3'b000; rwl_q_04 = 6'h00;
+                                       demux_q_05 = 3'b000; rwl_q_05 = 6'h00;
+                                       demux_q_06 = 3'b000; rwl_q_06 = 6'h00;
+                                       demux_q_07 = 3'b000; rwl_q_07 = 6'h00;
+                                       demux_q_08 = 3'b000; rwl_q_08 = 6'h00;
+                                       demux_q_09 = 3'b000; rwl_q_09 = 6'h00;
+                                       demux_q_10 = 3'b000; rwl_q_10 = 6'h00;
+                                       demux_q_11 = 3'b000; rwl_q_11 = 6'h00;
+                                       demux_q_12 = 3'b000; rwl_q_12 = 6'h00;
+                                       demux_q_13 = 3'b000; rwl_q_13 = 6'h00;
+                                       demux_q_14 = 3'b000; rwl_q_14 = 6'h00;
+                                       demux_q_15 = 3'b000; rwl_q_15 = 6'h00;
+                               end
+                       end
 			ST_LOOKUP: begin
 				// \u5730\u5740 = {1'b0, ark[7:6]} & ark[5:0]
 				demux_q_00 = {1'b0, ark_q_00[7:6]}; rwl_q_00 = ark_q_00[5:0];
@@ -507,8 +534,8 @@ module StdAES_Optimized
 	
 
     // \u7aef\u53e3\u8f93\u51fa
-    assign IN = ((read_cnt < 4'd8) && (current_state == ST_READ)) ? pick_2b(src128, read_cnt) : 16'h0;
 
+    assign IN = ((read_cnt < 4'd8) && (current_state == ST_READ) && RD_DONE) ? pick_2b(src128, read_cnt) : 16'h0;
 
     assign DEMUX_ADD_00 = demux_q_00; assign RWL_DEC_ADD_00 = rwl_q_00;
     assign DEMUX_ADD_01 = demux_q_01; assign RWL_DEC_ADD_01 = rwl_q_01;
@@ -528,7 +555,8 @@ module StdAES_Optimized
     assign DEMUX_ADD_15 = demux_q_15; assign RWL_DEC_ADD_15 = rwl_q_15;
 
     assign SEL_AD1 = 1'b0;
-    assign SEL_AD0 = (current_state == ST_READ) ? 1'b1 :1'b0;
+
+    assign SEL_AD0 = (current_state == ST_READ) ? RD_DONE : 1'b0;
 
 
 endmodule
