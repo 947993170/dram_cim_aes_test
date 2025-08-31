@@ -12,8 +12,9 @@
 // a starting point for further development.
 
 module AES_DRAM_Top_tb;
-    // clock and reset
-    reg CLK;
+    // differential clock and reset
+    reg CLK_p;            // positive clock from the differential pair
+    wire CLK_n = ~CLK_p;  // generate the negative clock
     reg RSTn;
 
     // top-level inputs
@@ -49,7 +50,8 @@ module AES_DRAM_Top_tb;
 
     // instantiate design under test
     AES_DRAM_Top dut (
-        .CLK        (CLK),
+        .CLK_p      (CLK_p),
+        .CLK_n      (CLK_n),
         .RSTn       (RSTn),
         .EN         (EN),
 //        .Kin        (Kin),
@@ -106,8 +108,8 @@ module AES_DRAM_Top_tb;
     );
 
     // clock generation
-    initial CLK = 0;
-    always #5 CLK = ~CLK; // 100 MHz clock
+    initial CLK_p = 0;
+    always #5 CLK_p = ~CLK_p; // 100 MHz differential clock
 
     // stimulus
     initial begin
@@ -136,4 +138,29 @@ module AES_DRAM_Top_tb;
         #1000;
         $finish;
     end
+endmodule
+
+// ---------------------------------------------------------------------------
+// Simple stubs for vendor specific primitives used in AES_DRAM_Top.
+// These provide minimal functionality sufficient for behavioural simulation.
+// ---------------------------------------------------------------------------
+module clk_wiz_400m(
+    output clk_400m,
+    output clk_100m,
+    input  clk
+);
+    assign clk_400m = clk;
+    assign clk_100m = clk;
+endmodule
+
+module IBUFDS #(
+    parameter DIFF_TERM   = "FALSE",
+    parameter IBUF_LOW_PWR = "TRUE",
+    parameter IOSTANDARD  = "DEFAULT"
+)(
+    output O,
+    input  I,
+    input  IB
+);
+    assign O = I; // ignore differential behaviour for simulation
 endmodule
