@@ -12,14 +12,14 @@
 module DRAM_Key_Sbox_Init (
     input  wire        CLK,
     input  wire        RSTn,
-    input  wire        wr_done,
-    input  wire        START,
+(* mark_debug = "true" *)    input  wire        wr_done,
+(* mark_debug = "true" *)    input  wire        START,
     input  wire [127:0] Kin,
-    output reg         DONE,
+(* mark_debug = "true" *)    output reg         DONE,
     // signals driving the external DRAM controller
-    output reg         IO_EN,
-    output wire [5:0]  ADDR,
-    output wire [63:0] WBL_DATA1,
+(* mark_debug = "true" *)    output reg         IO_EN,
+(* mark_debug = "true" *)    output wire [5:0]  ADDR,
+(* mark_debug = "true" *)    output wire [63:0] WBL_DATA1,
     output wire [63:0] WBL_DATA2,
     output wire [63:0] WBL_DATA3,
     output wire [63:0] WBL_DATA4,
@@ -34,7 +34,7 @@ module DRAM_Key_Sbox_Init (
     output wire [63:0] WBL_DATA13,
     output wire [63:0] WBL_DATA14,
     output wire [63:0] WBL_DATA15,
-    output wire [63:0] WBL_DATA16
+(* mark_debug = "true" *)    output wire [63:0] WBL_DATA16
 );
 
     // ------------------------------------------------------------------
