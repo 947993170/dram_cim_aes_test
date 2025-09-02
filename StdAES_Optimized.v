@@ -10,8 +10,8 @@ module StdAES_Optimized
 
 (* mark_debug = "true" *)    input  wire [7:0]   RIO_00,
 (* mark_debug = "true" *)    input  wire [7:0]   RIO_01,
-(* mark_debug = "true" *)    input  wire [7:0]   RIO_02,
-(* mark_debug = "true" *)    input  wire [7:0]   RIO_03,
+    input  wire [7:0]   RIO_02,
+    input  wire [7:0]   RIO_03,
     input  wire [7:0]   RIO_04,
     input  wire [7:0]   RIO_05,
     input  wire [7:0]   RIO_06,
@@ -20,8 +20,8 @@ module StdAES_Optimized
     input  wire [7:0]   RIO_09,
     input  wire [7:0]   RIO_10,
     input  wire [7:0]   RIO_11,
-(* mark_debug = "true" *)    input  wire [7:0]   RIO_12,
-(* mark_debug = "true" *)    input  wire [7:0]   RIO_13,
+    input  wire [7:0]   RIO_12,
+    input  wire [7:0]   RIO_13,
 (* mark_debug = "true" *)    input  wire [7:0]   RIO_14,
 (* mark_debug = "true" *)    input  wire [7:0]   RIO_15,
 
@@ -123,12 +123,18 @@ module StdAES_Optimized
     // ark \u5bc4\u5b58\u5668\uff1a8 \u62cd\u91c7?? bit7..0
 (* mark_debug = "true" *)   reg [7:0] ark_q_00;
 (* mark_debug = "true" *)	reg	[7:0] ark_q_01;
-(* mark_debug = "true" *)	reg [7:0] ark_q_02;
-(* mark_debug = "true" *)	reg [7:0] ark_q_03;
-    reg [7:0] ark_q_04, ark_q_05, ark_q_06, ark_q_07;
-    reg [7:0] ark_q_08, ark_q_09, ark_q_10, ark_q_11;
-(* mark_debug = "true" *)   reg [7:0] ark_q_12;
-(* mark_debug = "true" *)	reg [7:0] ark_q_13;
+	reg [7:0] ark_q_02;
+	reg [7:0] ark_q_03;
+    reg [7:0] ark_q_04;
+	reg [7:0] ark_q_05;
+	reg [7:0] ark_q_06;
+	reg [7:0] ark_q_07;
+    reg [7:0] ark_q_08;
+	reg [7:0] ark_q_09; 
+	reg [7:0] ark_q_10;
+	reg [7:0] ark_q_11;
+    reg [7:0] ark_q_12;
+	reg [7:0] ark_q_13;
 (* mark_debug = "true" *)	reg [7:0] ark_q_14;
 (* mark_debug = "true" *)	reg [7:0] ark_q_15;
 
@@ -577,21 +583,13 @@ module StdAES_Optimized
 	
 (* mark_debug = "true" *)	wire [8:0] RD_ADDR_00;
 (* mark_debug = "true" *)	wire [8:0] RD_ADDR_01;
-(* mark_debug = "true" *)	wire [8:0] RD_ADDR_02;
-(* mark_debug = "true" *)	wire [8:0] RD_ADDR_03;
 
-(* mark_debug = "true" *)	wire [8:0] RD_ADDR_12;
-(* mark_debug = "true" *)	wire [8:0] RD_ADDR_13;
 (* mark_debug = "true" *)	wire [8:0] RD_ADDR_14;
 (* mark_debug = "true" *)	wire [8:0] RD_ADDR_15;
 	
 	assign RD_ADDR_00 = {DEMUX_ADD_00,RWL_DEC_ADD_00};
 	assign RD_ADDR_01 = {DEMUX_ADD_01,RWL_DEC_ADD_01};
-	assign RD_ADDR_02 = {DEMUX_ADD_02,RWL_DEC_ADD_02};
-	assign RD_ADDR_03 = {DEMUX_ADD_03,RWL_DEC_ADD_03};
-	
-	assign RD_ADDR_12 = {DEMUX_ADD_12,RWL_DEC_ADD_12};
-	assign RD_ADDR_13 = {DEMUX_ADD_13,RWL_DEC_ADD_13};
+
 	assign RD_ADDR_14 = {DEMUX_ADD_14,RWL_DEC_ADD_14};
 	assign RD_ADDR_15 = {DEMUX_ADD_15,RWL_DEC_ADD_15};
 
