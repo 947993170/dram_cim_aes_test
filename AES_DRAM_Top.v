@@ -5,18 +5,22 @@ module AES_DRAM_Top(
 //    input  wire         CLK,
     input wire CLK_p,
     input wire CLK_n,
-    input  wire         RSTn,
-    input  wire         EN,
+	input wire KEY1,
+	input wire KEY2,
+//    input  wire         RSTn,
+//    input  wire         EN,
 //    input  wire [127:0] Kin,
 //    input  wire [127:0] Din,
-    input  wire         KDrdy,
+//    input  wire         KDrdy,
 //    output wire [127:0] Dout,
 //    output wire         Dvld,
 //    output wire         Kvld,
 //    output wire         BSY,
 //    output reg          Trigger,
     // DRAM outputs to FPGA
-//    input  wire         SW1,
+    input  wire         SW1,
+    input  wire         SW2,
+    input  wire         SW3,
     input  wire         SW4,
     input  wire         SW5,
     input  wire         SW6,
@@ -111,6 +115,10 @@ module AES_DRAM_Top(
     output wire         LIMIN_1v8_16
 
 );
+    wire         CLK;
+    wire         RSTn;
+    wire         EN;
+    wire         KDrdy;
     wire [127:0] Dout;
     wire         Dvld;
     wire         Kvld;
@@ -119,6 +127,9 @@ module AES_DRAM_Top(
 
     wire clk_400m;
     wire clk_100m;
+    wire clk_200m;
+    wire clk_vsa;
+
     
     // DRAM read data bus collected from individual pins
     wire [16:1] DRAM16_data = {ROUT_1v8_16, ROUT_1v8_15, ROUT_1v8_14, ROUT_1v8_13,
@@ -160,7 +171,7 @@ module AES_DRAM_Top(
     wire        init_io_en;
     wire [5:0]  init_addr;
     wire [63:0] init_wbl_data [0:15];
-    wire        init_done;
+(* mark_debug = "true" *)    wire        init_done;
 	wire        aes_io_en;
 
     IBUFDS #(
@@ -176,6 +187,8 @@ module AES_DRAM_Top(
     clk_wiz_400m u_clk_wiz_400m(
          .clk_400m(clk_400m),
          .clk_100m(clk_100m),
+         .clk_200m(clk_200m),
+         .clk_vsa(clk_vsa),
          .clk(CLK)
     );
 
@@ -200,7 +213,7 @@ module AES_DRAM_Top(
         .Dvld (Dvld),
         .BSY  (BSY),
         .RD_DONE (rd_done),
-		.IO_EN (aes_io_en)
+		.IO_EN (aes_io_en),
         .DEMUX_ADD_00(demux_add[0]),  .DEMUX_ADD_01(demux_add[1]),
         .DEMUX_ADD_02(demux_add[2]),  .DEMUX_ADD_03(demux_add[3]),
         .DEMUX_ADD_04(demux_add[4]),  .DEMUX_ADD_05(demux_add[5]),
@@ -241,6 +254,11 @@ module AES_DRAM_Top(
         .WBL_DATA13(init_wbl_data[12]), .WBL_DATA14(init_wbl_data[13]),
         .WBL_DATA15(init_wbl_data[14]), .WBL_DATA16(init_wbl_data[15])
     );
+	
+	assign RSTn = KEY1;
+	assign EN = KEY2;
+	assign KDrdy = KEY2;
+
 
     // Select between initialization and normal AES operation
     wire init_active = ~init_done;
@@ -305,6 +323,8 @@ module AES_DRAM_Top(
     DRAM_write_read_16core u_dram (
         .clk_100m     (clk_100m),
         .clk_400m     (clk_400m),
+        .clk_200m     (clk_200m),
+        .clk_vsa      (clk_vsa),
         .rst_n        (RSTn),
         .IO_EN        (io_en_sel),
         .IO_MODEL     (io_model_sel),
