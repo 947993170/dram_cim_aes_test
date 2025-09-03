@@ -2,21 +2,18 @@
 // controller.  External interface follows the naming and timing
 // convention described in the specification table and waveform.
 module AES_DRAM_Top(
-//    input  wire         CLK,
     input wire CLK_p,
     input wire CLK_n,
-	input wire KEY1,
-	input wire KEY2,
-//    input  wire         RSTn,
-//    input  wire         EN,
-//    input  wire [127:0] Kin,
-//    input  wire [127:0] Din,
-//    input  wire         KDrdy,
-//    output wire [127:0] Dout,
-//    output wire         Dvld,
-//    output wire         Kvld,
-//    output wire         BSY,
-//    output reg          Trigger,
+    input wire RSTn,
+    input wire EN,
+    input wire [127:0] Din,
+    input wire [127:0] Kin,
+    input wire KDrdy,
+    output wire [127:0] Dout,
+    output wire Dvld,
+    output wire Kvld,
+    output wire BSY,
+    output reg  Trigger,
     // DRAM outputs to FPGA
     input  wire         SW1,
     input  wire         SW2,
@@ -116,14 +113,6 @@ module AES_DRAM_Top(
 
 );
     wire         CLK;
-    wire         RSTn;
-    wire         EN;
-    wire         KDrdy;
-    wire [127:0] Dout;
-    wire         Dvld;
-    wire         Kvld;
-    wire         BSY;
-    reg          Trigger;
 
     wire clk_400m;
     wire clk_100m;
@@ -201,8 +190,7 @@ module AES_DRAM_Top(
         .CLK   (clk_100m),
         .RSTn  (RSTn),
         .EN    (EN && init_done),
-//        .Din   (Din),
-        .Din   (128'h000102030405060708090a0b0c0d0e0f),
+        .Din   (Din),
         .KDrdy (KDrdy),
         .RIO_00(dram_byte1), .RIO_01(dram_byte2), .RIO_02(dram_byte3), .RIO_03(dram_byte4),
         .RIO_04(dram_byte5), .RIO_05(dram_byte6), .RIO_06(dram_byte7), .RIO_07(dram_byte8),
@@ -240,8 +228,7 @@ module AES_DRAM_Top(
         .RSTn      (RSTn),
         .wr_done   (wr_done),
         .START     (EN),
-//        .Kin       (Kin),
-        .Kin       (128'h00112233445566778899aabbccddeeff),
+        .Kin       (Kin),
         .DONE      (init_done),
         .IO_EN     (init_io_en),
         .ADDR      (init_addr),
@@ -255,9 +242,6 @@ module AES_DRAM_Top(
         .WBL_DATA15(init_wbl_data[14]), .WBL_DATA16(init_wbl_data[15])
     );
 	
-	assign RSTn = KEY1;
-	assign EN = KEY2;
-	assign KDrdy = KEY2;
 
 
     // Select between initialization and normal AES operation
