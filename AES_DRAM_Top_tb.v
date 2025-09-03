@@ -12,9 +12,8 @@
 // a starting point for further development.
 
 module AES_DRAM_Top_tb;
-    // differential clock and reset
-    reg CLK_p;            // positive clock from the differential pair
-    wire CLK_n = ~CLK_p;  // generate the negative clock
+    // clock and reset
+    reg CLK;              // 100 MHz clock
     reg RSTn;
 
     // top-level inputs
@@ -50,8 +49,7 @@ module AES_DRAM_Top_tb;
 
     // instantiate design under test
     AES_DRAM_Top dut (
-        .CLK_p      (CLK_p),
-        .CLK_n      (CLK_n),
+        .CLK        (CLK),
         .RSTn       (RSTn),
         .EN         (EN),
 //        .Kin        (Kin),
@@ -108,8 +106,8 @@ module AES_DRAM_Top_tb;
     );
 
     // clock generation
-    initial CLK_p = 0;
-    always #5 CLK_p = ~CLK_p; // 100 MHz differential clock
+    initial CLK = 0;
+    always #5 CLK = ~CLK; // 100 MHz clock
 
     // stimulus
     initial begin

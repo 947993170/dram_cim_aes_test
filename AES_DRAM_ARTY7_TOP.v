@@ -3,7 +3,6 @@
 // Final top-level integrating UART interface with DRAM CIM-based AES core.
 module AES_DRAM_ARTY7_TOP(
     // UART interface
-    input  wire         CLK,
     input  wire         NRST,
     input  wire         RX_UART,
     output wire         TX_UART,
@@ -110,6 +109,7 @@ module AES_DRAM_ARTY7_TOP(
 );
 
     // Wires between UART controller and DRAM AES core
+    wire        CLK;        // buffered clock from differential input
     wire        aes_bsy;
     wire [127:0] aes_dout;
     wire        aes_dvld;
@@ -121,6 +121,16 @@ module AES_DRAM_ARTY7_TOP(
     wire        rstn_aes;
     wire        CLK_int;
     wire        trigger;
+
+    IBUFDS #(
+        .DIFF_TERM ("FALSE"),
+        .IBUF_LOW_PWR("TRUE"),
+        .IOSTANDARD("DEFAULT")
+    ) IBUFDS_inst (
+        .O (CLK),
+        .I (CLK_p),
+        .IB(CLK_n)
+    );
 
     // UART to AES controller
     clk_gen_uart_wrapper clk_gen_intf_0(
@@ -142,8 +152,7 @@ module AES_DRAM_ARTY7_TOP(
 
     // DRAM CIM-based AES core
     AES_DRAM_Top aes_dram_0(
-        .CLK_p(CLK_p),
-        .CLK_n(CLK_n),
+        .CLK(CLK),
         .RSTn(rstn_aes),
         .EN(en_aes),
         .Din(din_aes),
