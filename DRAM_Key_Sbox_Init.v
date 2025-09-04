@@ -50,13 +50,18 @@ module DRAM_Key_Sbox_Init (
     wire [63:0] gen5, gen6, gen7, gen8;
     wire [63:0] gen9, gen10, gen11, gen12;
     wire [63:0] gen13, gen14, gen15, gen16;
+    wire        gen_done;
 
     wire [5:0] gen_addr = (active && wr_done && addr_reg != LAST_ADDR) ?
                           addr_reg + 6'd1 : addr_reg;
 
     wbl_key_gen GEN (
+        .CLK  (CLK),
+        .RSTn (RSTn),
+        .START(START),
         .Kin  (Kin),
         .addr (gen_addr),
+        .DONE (gen_done),
         .WBL1 (gen1),
         .WBL2 (gen2),
         .WBL3 (gen3),
@@ -76,6 +81,7 @@ module DRAM_Key_Sbox_Init (
     );
 
     reg        active;
+    reg        gen_active;
     reg [5:0]  addr_reg;
     reg [63:0] data1_reg, data2_reg, data3_reg, data4_reg;
     reg [63:0] data5_reg, data6_reg, data7_reg, data8_reg;
@@ -105,14 +111,15 @@ module DRAM_Key_Sbox_Init (
     // ------------------------------------------------------------------
     always @(posedge CLK or negedge RSTn) begin
         if (!RSTn) begin
-            active    <= 1'b0;
-            addr_reg  <= 6'd0;
-            DONE      <= 1'b0;
-            IO_EN     <= 1'b0;
-            data1_reg <= 64'h0;
-            data2_reg <= 64'h0;
-            data3_reg <= 64'h0;
-            data4_reg <= 64'h0;
+            active     <= 1'b0;
+            gen_active <= 1'b0;
+            addr_reg   <= 6'd0;
+            DONE       <= 1'b0;
+            IO_EN      <= 1'b0;
+            data1_reg  <= 64'h0;
+            data2_reg  <= 64'h0;
+            data3_reg  <= 64'h0;
+            data4_reg  <= 64'h0;
             data5_reg  <= 64'h0;
             data6_reg  <= 64'h0;
             data7_reg  <= 64'h0;
@@ -127,12 +134,16 @@ module DRAM_Key_Sbox_Init (
             data16_reg <= 64'h0;
         end else begin
             IO_EN <= 1'b0; // default low, pulse when starting a write
-            if (START && !active) begin
-                // start streaming from address 0
-                active    <= 1'b1;
-                addr_reg  <= 6'd0;
-                DONE      <= 1'b0;
-                IO_EN     <= 1'b1; // pulse IO_EN to start first write
+            if (START && !gen_active && !active) begin
+                // initiate key expansion
+                gen_active <= 1'b1;
+                DONE       <= 1'b0;
+            end else if (gen_active && gen_done) begin
+                // start streaming from address 0 once keys ready
+                gen_active <= 1'b0;
+                active     <= 1'b1;
+                addr_reg   <= 6'd0;
+                IO_EN      <= 1'b1; // pulse IO_EN to start first write
                 data1_reg  <= gen1;
                 data2_reg  <= gen2;
                 data3_reg  <= gen3;
