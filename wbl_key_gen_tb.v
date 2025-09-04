@@ -8,10 +8,14 @@
 
 module wbl_key_gen_tb;
     // Inputs to the DUT
+    reg         CLK;
+    reg         RSTn;
+    reg         START;
     reg  [127:0] Kin;
     reg  [5:0]   addr;
 
     // Outputs from the DUT
+    wire        DONE;
     wire [63:0] WBL1;
     wire [63:0] WBL2;
     wire [63:0] WBL3;
@@ -31,8 +35,12 @@ module wbl_key_gen_tb;
 
     // Instantiate the unit under test
     wbl_key_gen dut (
+        .CLK  (CLK),
+        .RSTn (RSTn),
+        .START(START),
         .Kin  (Kin),
         .addr (addr),
+        .DONE (DONE),
         .WBL1 (WBL1),
         .WBL2 (WBL2),
         .WBL3 (WBL3),
@@ -57,10 +65,25 @@ module wbl_key_gen_tb;
     integer errors;
     integer i;
 
+    // clock generation
     initial begin
-        // Key used to generate the ROM contents. Update if different.
-        Kin = 128'h00000000000000000000000000000000;
+        CLK = 1'b0;
+        forever #5 CLK = ~CLK;
+    end
+
+    initial begin
+        // Reset and start sequence
+        RSTn  = 1'b0;
+        START = 1'b0;
+        addr  = 6'd0;
+        Kin   = 128'h00000000000000000000000000000000; // ROM key
         errors = 0;
+        #20 RSTn = 1'b1;
+        @(posedge CLK);
+        START = 1'b1;
+        @(posedge CLK);
+        START = 1'b0;
+        wait (DONE);
 
         for (i = 0; i < 64; i = i + 1) begin
             addr = i[5:0];

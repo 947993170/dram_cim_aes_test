@@ -7,8 +7,12 @@
 // Python scripts that produced the ROM file.
 
 module wbl_key_gen(
+    input  wire        CLK,
+    input  wire        RSTn,
+    input  wire        START,
     input  wire [127:0] Kin,
     input  wire [5:0]   addr,
+    output reg         DONE,
     output wire [63:0]  WBL1,
     output wire [63:0]  WBL2,
     output wire [63:0]  WBL3,
@@ -103,14 +107,15 @@ module wbl_key_gen(
     endfunction
 
     // ------------------------------------------------------------------
-    // Key expansion: generate 44 words w[0..43]
+    // Key expansion: sequential generation of round keys
     // ------------------------------------------------------------------
-    reg [31:0] w[0:43];
     reg [127:0] rk[0:10];
-    reg [63:0] wbl_words[0:15];
+    reg [63:0]  wbl_words[0:15];
 
-    integer i;
-    reg [31:0] temp;
+    reg [31:0] w0, w1, w2, w3, temp;
+    reg [3:0]  round;
+    reg        busy;
+
     integer idx, row, rnd, col;
     reg        even_not_odd;
     reg [2:0]  bit_idx;
@@ -121,37 +126,49 @@ module wbl_key_gen(
     reg [3:0]  col4;
     reg [7:0]  byte, b;
 
-    // Local temporaries used during key expansion
-    // Declared in a named block to satisfy Verilog scoping rules.
-    always @* begin : key_expand
+    // Rcon lookup
+    function [31:0] rcon;
+        input [3:0] r;
+        case (r)
+            4'd1:  rcon = 32'h01000000;
+            4'd2:  rcon = 32'h02000000;
+            4'd3:  rcon = 32'h04000000;
+            4'd4:  rcon = 32'h08000000;
+            4'd5:  rcon = 32'h10000000;
+            4'd6:  rcon = 32'h20000000;
+            4'd7:  rcon = 32'h40000000;
+            4'd8:  rcon = 32'h80000000;
+            4'd9:  rcon = 32'h1b000000;
+            default: rcon = 32'h36000000;
+        endcase
+    endfunction
 
-        w[0] = Kin[127:96];
-        w[1] = Kin[95:64];
-        w[2] = Kin[63:32];
-        w[3] = Kin[31:0];
-
-        for (i = 4; i < 44; i = i + 1) begin
-            temp = w[i-1];
-            if (i % 4 == 0) begin
-                temp = {sbox(temp[23:16]), sbox(temp[15:8]), sbox(temp[7:0]), sbox(temp[31:24])};
-                case (i/4)
-                    4'd1: temp = temp ^ 32'h01000000;
-                    4'd2: temp = temp ^ 32'h02000000;
-                    4'd3: temp = temp ^ 32'h04000000;
-                    4'd4: temp = temp ^ 32'h08000000;
-                    4'd5: temp = temp ^ 32'h10000000;
-                    4'd6: temp = temp ^ 32'h20000000;
-                    4'd7: temp = temp ^ 32'h40000000;
-                    4'd8: temp = temp ^ 32'h80000000;
-                    4'd9: temp = temp ^ 32'h1b000000;
-                    default: temp = temp ^ 32'h36000000;
-                endcase
+    // Sequential key schedule generation
+    always @(posedge CLK or negedge RSTn) begin
+        if (!RSTn) begin
+            round <= 4'd0;
+            busy  <= 1'b0;
+            DONE  <= 1'b0;
+        end else if (START && !busy) begin
+            rk[0] <= Kin;
+            round <= 4'd1;
+            busy  <= 1'b1;
+            DONE  <= 1'b0;
+        end else if (busy) begin
+            temp = rk[round-1][31:0];
+            temp = {sbox(temp[23:16]), sbox(temp[15:8]), sbox(temp[7:0]), sbox(temp[31:24])};
+            temp = temp ^ rcon(round);
+            w0   = rk[round-1][127:96] ^ temp;
+            w1   = rk[round-1][95:64]  ^ w0;
+            w2   = rk[round-1][63:32]  ^ w1;
+            w3   = rk[round-1][31:0]   ^ w2;
+            rk[round] <= {w0, w1, w2, w3};
+            if (round == 4'd10) begin
+                busy <= 1'b0;
+                DONE <= 1'b1;
+            end else begin
+                round <= round + 4'd1;
             end
-            w[i] = w[i-4] ^ temp;
-        end
-
-        for (i = 0; i < 11; i = i + 1) begin
-            rk[i] = {w[4*i], w[4*i+1], w[4*i+2], w[4*i+3]};
         end
     end
 
