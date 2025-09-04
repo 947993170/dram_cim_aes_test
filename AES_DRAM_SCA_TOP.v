@@ -252,9 +252,9 @@ module AES_DRAM_SCA_TOP(
         .RSTn      (rstn_aes),
         .wr_done   (wr_done),
         .START     (en_aes),
-        .Kin       (128'h000102030405060708090a0b0c0d0e0f),
+//        .Kin       (128'h000102030405060708090a0b0c0d0e0f),
 		
-//        .Kin       (kin_aes),
+        .Kin       (kin_aes),
         .DONE      (init_done),
         .IO_EN     (init_io_en),
         .ADDR      (init_addr),
