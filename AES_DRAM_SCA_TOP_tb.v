@@ -103,7 +103,7 @@ module AES_DRAM_SCA_TOP_tb;
     // clock generation
     initial begin
         CLK_p = 0;
-        forever #5 CLK_p = ~CLK_p; // 100 MHz clock
+        forever #10 CLK_p = ~CLK_p; // 100 MHz clock
     end
     always @* CLK_n = ~CLK_p;
 
@@ -152,32 +152,4 @@ module AES_DRAM_SCA_TOP_tb;
         repeat(500000) @(posedge CLK_p);
         $finish;
     end
-endmodule
-
-// ---------------------------------------------------------------------------
-// Simple stubs for vendor specific primitives used in AES_DRAM_SCA_TOP.
-// ---------------------------------------------------------------------------
-module clk_wiz_400m(
-    output clk_400m,
-    output clk_100m,
-    output clk_200m,
-    output clk_vsa,
-    input  clk_in1
-);
-    assign clk_400m = clk_in1;
-    assign clk_100m = clk_in1;
-    assign clk_200m = clk_in1;
-    assign clk_vsa  = clk_in1;
-endmodule
-
-module IBUFDS #(
-    parameter DIFF_TERM   = "FALSE",
-    parameter IBUF_LOW_PWR = "TRUE",
-    parameter IOSTANDARD  = "DEFAULT"
-)(
-    output O,
-    input  I,
-    input  IB
-);
-    assign O = I; // ignore differential behaviour for simulation
 endmodule
