@@ -132,20 +132,52 @@ module AES_DRAM_SCA_TOP(
     );
 
     // UART to AES controller
-    clk_gen_uart_wrapper clk_gen_intf_0(
-        .BUSY_AES(aes_bsy),
-        .DIN_AES(din_aes),
-        .DOUT_AES(aes_dout),
-        .DVLD_AES(aes_dvld),
-        .EN_AES(en_aes),
-        .KDRDY_AES(kdrdy_aes),
-        .KIN_AES(kin_aes),
-        .KVLD_AES(aes_kvld),
-        .NRST(NRST),
-        .RSTn_AES(rstn_aes),
-        .RX_UART(RX_UART),
-        .TX_UART(TX_UART),
-        .CLK(clk_100m)
+//    clk_gen_uart_wrapper clk_gen_intf_0(
+//        .BUSY_AES(aes_bsy),
+//        .DIN_AES(din_aes),
+//        .DOUT_AES(aes_dout),
+//        .DVLD_AES(aes_dvld),
+//        .EN_AES(en_aes),
+//        .KDRDY_AES(kdrdy_aes),
+//        .KIN_AES(kin_aes),
+//        .KVLD_AES(aes_kvld),
+//        .NRST(NRST),
+//        .RSTn_AES(rstn_aes),
+//        .RX_UART(RX_UART),
+//        .TX_UART(TX_UART),
+//        .CLK(clk_100m)
+//    );
+    
+    
+    UART_Interface_Controller 
+    #(
+		.Counter_Parameter (10416  ), // Clock Frequency divided by Baudrate	
+		.S00               (4'b0000),
+		.S01               (4'b0001),
+		.S02               (4'b0010),
+		.S03               (4'b0011),
+		.S04               (4'b0100),
+		.S05               (4'b0101),
+		.S06               (4'b0110),
+		.S07               (4'b0111),
+		.S08               (4'b1000),
+		.S09               (4'b1001),
+		.S10               (4'b1010)
+    )
+    UART_Interface_Controller_inst(
+        .CLK       (clk_100m ),
+        .NRST      (NRST     ),
+        .RX_UART   (RX_UART  ),
+        .DOUT_AES  (aes_dout ),
+        .KVLD_AES  (aes_kvld ),
+        .DVLD_AES  (aes_dvld ),
+        .BUSY_AES  (aes_bsy  ),
+        .TX_UART   (TX_UART  ),
+        .EN_AES    (en_aes   ),
+		.RSTn_AES  (rstn_aes ),
+        .KIN_AES   (kin_aes  ),
+		.DIN_AES   (din_aes  ),
+		.KDRDY_AES (kdrdy_aes)
     );
 
     wire clk_400m;
