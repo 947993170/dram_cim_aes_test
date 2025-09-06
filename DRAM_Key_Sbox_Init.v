@@ -82,6 +82,7 @@ module DRAM_Key_Sbox_Init (
 
     reg        active;
     reg        gen_active;
+    reg        configured;
     reg [5:0]  addr_reg;
     reg [63:0] data1_reg, data2_reg, data3_reg, data4_reg;
     reg [63:0] data5_reg, data6_reg, data7_reg, data8_reg;
@@ -113,6 +114,7 @@ module DRAM_Key_Sbox_Init (
         if (!RSTn) begin
             active     <= 1'b0;
             gen_active <= 1'b0;
+            configured <= 1'b0;
             addr_reg   <= 6'd0;
             DONE       <= 1'b0;
             IO_EN      <= 1'b0;
@@ -134,7 +136,7 @@ module DRAM_Key_Sbox_Init (
             data16_reg <= 64'h0;
         end else begin
             IO_EN <= 1'b0; // default low, pulse when starting a write
-            if (START && !gen_active && !active) begin
+            if (START && !gen_active && !active && !configured) begin
                 // initiate key expansion
                 gen_active <= 1'b1;
                 DONE       <= 1'b0;
@@ -163,8 +165,9 @@ module DRAM_Key_Sbox_Init (
             end else if (active && wr_done) begin
                 if (addr_reg == LAST_ADDR) begin
                     // finished streaming all addresses
-                    active <= 1'b0;
-                    DONE   <= 1'b1;
+                    active     <= 1'b0;
+                    DONE       <= 1'b1;
+                    configured <= 1'b1;
                 end else begin
                     addr_reg  <= addr_reg + 1'b1;
                     IO_EN     <= 1'b1; // pulse for subsequent write
