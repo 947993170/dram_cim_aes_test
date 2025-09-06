@@ -117,7 +117,8 @@ module StdAES_Optimized
 	
     reg [3:0] grp_idx;    // 0..10
     reg [3:0] read_cnt;   // 0..7
-	reg [3:0] read_cnt_dff;   // 0..7
+        reg [3:0] read_cnt_dff;   // 0..7
+        reg       rd_done_prev;   // track RD_DONE rising edge
 
 
     // ark \u5bc4\u5b58\u5668\uff1a8 \u62cd\u91c7?? bit7..0
@@ -370,11 +371,17 @@ module StdAES_Optimized
     always @(posedge CLK or posedge rst) begin
         if (rst) begin
             read_cnt_dff <= 4'd0;
+            rd_done_prev <= 1'b0;
         end else if (current_state == ST_READ) begin
-			read_cnt_dff <= read_cnt;
+            if (RD_DONE && !rd_done_prev) begin
+                // update only on RD_DONE rising edge to lag one RD_DONE event
+                read_cnt_dff <= read_cnt;
+            end
+            rd_done_prev <= RD_DONE;
         end else begin
-			read_cnt_dff <= 4'h0;
-		end
+            read_cnt_dff <= 4'h0;
+            rd_done_prev <= 1'b0;
+        end
     end
 	
 	always @(*) begin
