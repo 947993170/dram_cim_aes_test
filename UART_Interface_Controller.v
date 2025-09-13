@@ -288,24 +288,16 @@ always @ (RX_state or RX_UART2 or RX_CLK_Counter or RX_Counter)
 		    else 
 			    next_RX_state = S00;
           end
-    S01 : begin          
-//          if (RX_CLK_Counter <= HALF_BIT) 
-//          if (RX_CLK_Counter <= HALF_BIT) 		
-//          if (RX_CLK_Counter <= ONE_FOURTH_BIT) 		
-//          if (RX_CLK_Counter <= ONE_EIGHTH_BIT)
-//			if (RX_CLK_Counter <= ONE_SIXTEENTH_BIT)
-//			if (RX_CLK_Counter <= ONE_32_BIT)
-//			if (RX_CLK_Counter <= ONE_64_BIT)			
-//			if (RX_CLK_Counter <= ONE_128_BIT)			
-//			    if (RX_UART2 == 0)
-//                    next_RX_state = S01; //Must last for at least 10 clock cycles
-//			    else 
-//				    next_RX_state = S00; //Reset Back to state S00;
-//            else 
-			if (RX_CLK_Counter == Counter_Parameter)   
-				next_RX_state = S02;  //Finish Counting
-			else 
-				next_RX_state = S01; 	//Must wait until the counting is done			 
+    S01 : begin
+            // Validate the start bit at the midpoint of the bit period.  If the
+            // serial line has already returned high by HALF_BIT, the start bit
+            // was spurious and reception should restart from the idle state.
+            if ((RX_CLK_Counter == HALF_BIT) && (RX_UART2 == 1'b1))
+                next_RX_state = S00;  // false start bit
+            else if (RX_CLK_Counter == Counter_Parameter)
+                next_RX_state = S02;  // proceed to data reception
+            else
+                next_RX_state = S01;  // continue waiting within start bit
           end
     S02 : begin          
 	        if (RX_CLK_Counter == Counter_Parameter) // For first Data Bit 
