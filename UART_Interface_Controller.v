@@ -341,21 +341,27 @@ always @ (RX_state or RX_UART2 or RX_CLK_Counter or RX_Counter)
            else 
                next_RX_state = S08;		   
          end
-    S09 : begin          
-	       if ((RX_CLK_Counter == Counter_Parameter)) // For Eighth Data Bit 
-               if (RX_Counter == 32)  
-                   next_RX_state = S00;
-               else 
-                   next_RX_state = S10;		 
-           else
-		     next_RX_state = S09;		
-          end		 
+    // Always transition to the stop-bit state after the eighth data bit.  The
+    // check for the final byte now occurs in S10 so that the stop bit is
+    // properly sampled before returning to idle.
+    S09 : begin
+               if (RX_CLK_Counter == Counter_Parameter) // For Eighth Data Bit
+                   next_RX_state = S10;
+               else
+                   next_RX_state = S09;
+          end
+    // In S10 the stop bit is monitored. After one bit time, determine if all
+    // 33 bytes have been received. If so, return to idle; otherwise wait for
+    // the next start bit.
     S10 : begin
-			if (RX_CLK_Counter == Counter_Parameter)   
-                next_RX_state = S01;  //Finish Counting
-            else 
-                next_RX_state = S10; 	//Must wait until the counting is done		
-          end		  
+                        if (RX_CLK_Counter == Counter_Parameter)
+                            if (RX_Counter == 33)
+                                next_RX_state = S00;  // complete command received
+                            else
+                                next_RX_state = S01;  // expect more bytes
+                        else
+                                next_RX_state = S10;    //Must wait until the counting is done
+          end
 default : begin        
             next_RX_state = S00; 
           end	
