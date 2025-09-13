@@ -362,10 +362,11 @@ always @ (RX_state or RX_UART2 or RX_CLK_Counter or RX_Counter)
                         else
                                 next_RX_state = S10;    //Must wait until the counting is done
           end
-default : begin        
+  default : begin        
             next_RX_state = S00; 
           end	
   endcase
+end
 /*********************************/
 /**** End of Receiving         ***/
 /*********************************/
