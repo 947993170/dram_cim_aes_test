@@ -50,12 +50,21 @@ parameter S10 = 4'b1010
 //Baudrate = 9600
 //Clck     = 100MHz
 //Counter  = 10416;
+localparam integer HALF_BIT = Counter_Parameter >> 1;
+localparam integer ONE_FOURTH_BIT = Counter_Parameter >> 2;
+localparam integer ONE_EIGHTH_BIT = Counter_Parameter >> 3;
+localparam integer ONE_SIXTEENTH_BIT = Counter_Parameter >> 4;
+localparam integer ONE_32_BIT = Counter_Parameter >> 5;
+localparam integer ONE_64_BIT = Counter_Parameter >> 6;
+localparam integer ONE_128_BIT = Counter_Parameter >> 7;
+
+
 
 
  					  
 input         CLK;  
-input         NRST;
-input         RX_UART;
+(* mark_debug = "true" *) input         NRST;
+(* mark_debug = "true" *) input         RX_UART;
 input [127:0] DOUT_AES;
 input         KVLD_AES;
 input         DVLD_AES;
@@ -69,12 +78,12 @@ output [127:0] DIN_AES;
 output         KDRDY_AES;
 
 
-reg         TX_UART;
-reg         EN_AES;
-reg         RSTn_AES;
-reg [127:0] KIN_AES;
-reg [127:0] DIN_AES;
-reg         KDRDY_AES;
+(* mark_debug = "true" *) reg         TX_UART;
+(* mark_debug = "true" *) reg         EN_AES;
+(* mark_debug = "true" *) reg         RSTn_AES;
+(* mark_debug = "true" *) reg [127:0] KIN_AES;
+(* mark_debug = "true" *) reg [127:0] DIN_AES;
+(* mark_debug = "true" *) reg         KDRDY_AES;
 reg         KDRDY_AES01;
 reg         KDRDY_AES02;
 reg         KDRDY_AES03;
@@ -87,10 +96,10 @@ reg         DVLD_AES03;
 reg         DVLD_AES04;
 reg         DVLD_AES05;
 
-reg [14:0] RX_CLK_Counter;
-reg [ 5:0] RX_Counter; 
-reg [ 3:0] RX_state;
-reg [ 7:0] RX_Header_REG;
+(* mark_debug = "true" *) reg [14:0] RX_CLK_Counter;
+(* mark_debug = "true" *) reg [ 5:0] RX_Counter; 
+(* mark_debug = "true" *) reg [ 3:0] RX_state;
+(* mark_debug = "true" *) reg [ 7:0] RX_Header_REG;
 reg        RX_UART1;
 reg        RX_UART2;
 reg [3:0] next_RX_state;
@@ -120,12 +129,29 @@ always @ (posedge CLK or negedge NRST)
 
 //RX CLK Counter
 always @ (posedge CLK or negedge NRST)
-  if (!NRST)
-      RX_CLK_Counter     <= #1 0;
-  else if ((RX_state == S00) | (RX_state == S10) | (RX_CLK_Counter == Counter_Parameter))  
-		        RX_CLK_Counter <= #1 0;	   
-	      else  
-			      RX_CLK_Counter <= #1 RX_CLK_Counter + 1;
+	if (!NRST)
+		RX_CLK_Counter <= 'd0;
+	else if (RX_state == S00)
+		RX_CLK_Counter <= 'd0;	   
+	else if (RX_CLK_Counter == Counter_Parameter)
+		if ((RX_state == S10) && (RX_UART2 == 1'b1))
+			RX_CLK_Counter <= RX_CLK_Counter;
+		else 
+			RX_CLK_Counter <= 'd0;
+//	else if (RX_state == S01) 
+//		if (RX_UART2 == 0) 
+//			RX_CLK_Counter <= #1 RX_CLK_Counter + 1;
+//		else 
+//			RX_CLK_Counter <= #1 RX_CLK_Counter;
+//	else if (RX_state == S10)
+//		if (RX_UART2 == 1)
+//			RX_CLK_Counter <= #1 RX_CLK_Counter + 1;
+//		else 
+//			RX_CLK_Counter <= #1 RX_CLK_Counter;
+	else 
+		RX_CLK_Counter <= RX_CLK_Counter + 1;
+
+
                 	   
 //RX Counter
 always @ (posedge CLK or negedge NRST)
@@ -147,7 +173,8 @@ always @ (posedge CLK or negedge NRST)
 		    KIN_AES    <= #1 0;
 		    DIN_AES    <= #1 0;
 	    end
-  else if (RX_CLK_Counter == 100)  //Capture the datat at 100th clock 
+//  else if (RX_CLK_Counter == 100)  //Capture the datat at 100th clock 
+  else if (RX_CLK_Counter == HALF_BIT)  //Capture the datat at middle
            if (RX_Counter == 0)
                begin 
                  case (RX_state)
@@ -256,21 +283,29 @@ always @ (posedge CLK or negedge NRST)
 always @ (RX_state or RX_UART2 or RX_CLK_Counter or RX_Counter)
   case (RX_state)
     S00 : begin
-            if ((RX_UART2 == 0)) //First Check 
+            if ((RX_UART2 && RX_UART1 && RX_UART) == 0) //First Check 
                 next_RX_state = S01;           
 		    else 
 			    next_RX_state = S00;
           end
     S01 : begin          
-            if (RX_CLK_Counter <= 10) 
-			    if (RX_UART2 == 0)
-                    next_RX_state = S01; //Must last for at least 10 clock cycles
-			    else 
-				    next_RX_state = S00; //Reset Back to state S00;
-            else if (RX_CLK_Counter == Counter_Parameter)   
-                     next_RX_state = S02;  //Finish Counting
-                 else 
-                     next_RX_state = S01; 	//Must wait until the counting is done			 
+//          if (RX_CLK_Counter <= HALF_BIT) 
+//          if (RX_CLK_Counter <= HALF_BIT) 		
+//          if (RX_CLK_Counter <= ONE_FOURTH_BIT) 		
+//          if (RX_CLK_Counter <= ONE_EIGHTH_BIT)
+//			if (RX_CLK_Counter <= ONE_SIXTEENTH_BIT)
+//			if (RX_CLK_Counter <= ONE_32_BIT)
+//			if (RX_CLK_Counter <= ONE_64_BIT)			
+//			if (RX_CLK_Counter <= ONE_128_BIT)			
+//			    if (RX_UART2 == 0)
+//                    next_RX_state = S01; //Must last for at least 10 clock cycles
+//			    else 
+//				    next_RX_state = S00; //Reset Back to state S00;
+//            else 
+			if (RX_CLK_Counter == Counter_Parameter)   
+				next_RX_state = S02;  //Finish Counting
+			else 
+				next_RX_state = S01; 	//Must wait until the counting is done			 
           end
     S02 : begin          
 	        if (RX_CLK_Counter == Counter_Parameter) // For first Data Bit 
@@ -324,10 +359,10 @@ always @ (RX_state or RX_UART2 or RX_CLK_Counter or RX_Counter)
 		     next_RX_state = S09;		
           end		 
     S10 : begin
-            if ((RX_UART2 == 0)) //Not the first data
-                next_RX_state = S01;           
-		    else 
-			    next_RX_state = S10;
+			if (RX_CLK_Counter == Counter_Parameter)   
+                next_RX_state = S01;  //Finish Counting
+            else 
+                next_RX_state = S10; 	//Must wait until the counting is done		
           end		  
 default : begin        
             next_RX_state = S00; 
