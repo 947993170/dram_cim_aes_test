@@ -108,24 +108,25 @@ module DRAM_write_read_16core(
     // DRAM_IO
     // IO数据DRAM?FPGA
     // input wire [8:1] DRAM_data, // 单芯片
-    input wire [16:1] DRAM16_data, // 16块芯片通过并转串输出
-    output wire [2:0]PC_data,      /// PC并转串控制信号 PC[0]=clk PC[1]=SR/LD# PC[2]=CLK_INV
+(* mark_debug = "true" *)    input wire [16:1] DRAM16_data, // 16块芯片通过并转串输出
+(* mark_debug = "true" *)    output wire [2:0]PC_data,      /// PC并转串控制信号 PC[0]=clk PC[1]=SR/LD# PC[2]=CLK_INV
     // IO控制FPGA?DRAM
-    output reg ADD_IN,            // ADD_IN // WWL_ADD 输入 自带CP 1 to 6
-    output reg ADD_VALID_IN,      // A_VALID// WWL_ADD_VALID 输入地址使能
-    output reg [1:0]PC_D_IN,      /// D_IN 的串转并控制信号 PC_D_IN[1]为rst_n  PC_D_IN[0]为移位时钟
-    output reg [16:1]D_IN,        /// D_IN[1:16] // 16块芯片的DATA_I
-    output reg DATA_VALID_IN,     // D_VALIDv// WBL 输入数据使能
-    output wire clk_out,           // 相当于带使能的100MHz时钟
-    output reg WRI_EN,            // WRI_EN 写使能
-    output reg [16:1]R_AD,        ///R_AD 读/算地址 串转并后高两位是DE_ADD0 1
-    output reg [1:0]PC_R_AD,      ///R_AD 的串转并控制信号
+(* mark_debug = "true" *)    output reg ADD_IN,            // ADD_IN // WWL_ADD 输入 自带CP 1 to 6
+(* mark_debug = "true" *)    output reg ADD_VALID_IN,      // A_VALID// WWL_ADD_VALID 输入地址使能
+(* mark_debug = "true" *)    output reg [1:0]PC_D_IN,      /// D_IN 的串转并控制信号 PC_D_IN[1]为rst_n  PC_D_IN[0]为移位时钟
+(* mark_debug = "true" *)    output reg [16:1]D_IN,        /// D_IN[1:16] // 16块芯片的DATA_I
+(* mark_debug = "true" *)    output reg DATA_VALID_IN,     // D_VALIDv// WBL 输入数据使能
+(* mark_debug = "true" *)    output wire clk_out,           // 相当于带使能的100MHz时钟
+(* mark_debug = "true" *)    output reg WRI_EN,            // WRI_EN 写使能
+(* mark_debug = "true" *)    output reg [16:1]R_AD,        ///R_AD 读/算地址 串转并后高两位是DE_ADD0 1
+(* mark_debug = "true" *)    output reg [1:0]PC_R_AD,      ///R_AD 的串转并控制信号
     output wire [16:1]LIM_IN,     /// LIM输入 16块芯片的算输入数据
     output wire [1:0] LIM_SEL,    /// LIM_SEL 存算模式选择
-    output wire DE_ADD3,           /// DE_ADD3
-    output wire RD_EN,         // 读使能 RWL_EN
-    output wire VSAEN,
-    output reg REF_WWL
+(* mark_debug = "true" *)    output wire DE_ADD3,           /// DE_ADD3
+(* mark_debug = "true" *)    output wire RD_EN,         // 读使能 RWL_EN
+(* mark_debug = "true" *)    output wire VSAEN,
+//(* mark_debug = "true" *)    output reg REF_WWL
+(* mark_debug = "true" *)    output wire REF_WWL
     );
     // 100Mhz时钟下输入寄存
     reg [1:0]       IO_MODEL_nr1     ;    // 01写, 10读
@@ -183,10 +184,14 @@ module DRAM_write_read_16core(
     reg          DEMUX_ADD_3_nr1  ;
     reg                IO_EN_nr1;
     // 400MHz域输出寄存以及100MHz域两级同步寄存
-    reg [7:0] DRAM_DATA_OUT1_r;  reg [7:0] DRAM_DATA_OUT2_r;  reg [7:0] DRAM_DATA_OUT3_r;  reg [7:0] DRAM_DATA_OUT4_r;
+(* mark_debug = "true" *)    reg [7:0] DRAM_DATA_OUT1_r;  
+    reg [7:0] DRAM_DATA_OUT2_r;  reg [7:0] DRAM_DATA_OUT3_r;  reg [7:0] DRAM_DATA_OUT4_r;
     reg [7:0] DRAM_DATA_OUT5_r;  reg [7:0] DRAM_DATA_OUT6_r;  reg [7:0] DRAM_DATA_OUT7_r;  reg [7:0] DRAM_DATA_OUT8_r;
     reg [7:0] DRAM_DATA_OUT9_r;  reg [7:0] DRAM_DATA_OUT10_r; reg [7:0] DRAM_DATA_OUT11_r; reg [7:0] DRAM_DATA_OUT12_r;
-    reg [7:0] DRAM_DATA_OUT13_r; reg [7:0] DRAM_DATA_OUT14_r; reg [7:0] DRAM_DATA_OUT15_r; reg [7:0] DRAM_DATA_OUT16_r;
+    reg [7:0] DRAM_DATA_OUT13_r; reg [7:0] DRAM_DATA_OUT14_r; reg [7:0] DRAM_DATA_OUT15_r; 
+    
+(* mark_debug = "true" *)    reg [7:0] DRAM_DATA_OUT16_r;
+    
     reg       RD_DONE_r; reg WT_DONE_r;
     reg [7:0] DRAM_DATA_OUT1_nr1;  reg [7:0] DRAM_DATA_OUT2_nr1;  reg [7:0] DRAM_DATA_OUT3_nr1;  reg [7:0] DRAM_DATA_OUT4_nr1;
     reg [7:0] DRAM_DATA_OUT5_nr1;  reg [7:0] DRAM_DATA_OUT6_nr1;  reg [7:0] DRAM_DATA_OUT7_nr1;  reg [7:0] DRAM_DATA_OUT8_nr1;
@@ -632,6 +637,8 @@ module DRAM_write_read_16core(
     end   
     reg clk_out_WT;
     assign clk_out = clk_out_WT;
+//	assign clk_out = counter_work[1];
+
     reg WR_flag;  // 写使能信号，写的时候为高电平
     // write data to DRAM (全展开 8 轮：起始位 0..7，每轮第一层移位 8 次，随后第二层一次脉冲)
     wire Write_en;
@@ -2134,18 +2141,23 @@ module DRAM_write_read_16core(
                 13'd1625: begin
                             clk_out_WT <= 1'b1;
                         end
+                13'd1626: begin
+                            WRI_EN<=1;
+                        end
                 13'd1627: begin
                             clk_out_WT <= 1'b0;
                             ADD_VALID_IN <= 1'b1;// 结束地址移位
+                            WRI_EN<=1;
                         end
                 13'd1629: begin
-                            clk_out_WT <= 1'b1;
+                            clk_out_WT <= 1'b1; //修改为0
+                            //
                         end
                 13'd1631: begin
                             clk_out_WT <= 1'b0;
                         end
-                13'd1633: begin WRI_EN<=1;end
-                13'd1635: begin end
+                13'd1633: begin clk_out_WT <= 1'b1; WRI_EN<=1;end
+                13'd1635: begin clk_out_WT <= 1'b0; WRI_EN<=0;WR_flag<=0;end
                 13'd1637: begin end
                 13'd1639: begin end
                 13'd1641: begin WRI_EN<=0; WR_flag<=0; end
@@ -2172,9 +2184,9 @@ module DRAM_write_read_16core(
     (*dont_touch="yes"*)reg RD_EN_pre;
     // reg CLK_out_RD;
     // reg read_data; // DRAM寄存数据
-    reg PC_DATA_CLK;
-    reg PC_DATA_CLK_INH; // 一直为低电平
-    reg PC_DATA_SHLD;
+(* mark_debug = "true" *)    reg PC_DATA_CLK;
+(* mark_debug = "true" *)    reg PC_DATA_CLK_INH; // 一直为低电平
+(* mark_debug = "true" *)    reg PC_DATA_SHLD;
     //PC并转串控制信号 PC[0]=clk PC[1]=SR/LD# PC[2]=CLK_INV
     assign PC_data = {PC_DATA_CLK_INH, PC_DATA_SHLD, PC_DATA_CLK}; 
 
@@ -2193,12 +2205,15 @@ module DRAM_write_read_16core(
         if(!rst_n)begin
             DRAM_DATA_OUT1_r <= 8'd0; DRAM_DATA_OUT2_r <= 8'd0; DRAM_DATA_OUT3_r <= 8'd0; DRAM_DATA_OUT4_r <= 8'd0; DRAM_DATA_OUT5_r <= 8'd0; DRAM_DATA_OUT6_r <= 8'd0; DRAM_DATA_OUT7_r <= 8'd0; DRAM_DATA_OUT8_r <= 8'd0;
             DRAM_DATA_OUT9_r <= 8'd0; DRAM_DATA_OUT10_r <= 8'd0; DRAM_DATA_OUT11_r <= 8'd0; DRAM_DATA_OUT12_r <= 8'd0; DRAM_DATA_OUT13_r <= 8'd0; DRAM_DATA_OUT14_r <= 8'd0; DRAM_DATA_OUT15_r <= 8'd0; DRAM_DATA_OUT16_r <= 8'd0;
-            RD_DONE_r <= 1'b0; RD_EN_pre <= 1'b0; REF_WWL <= 1'b1;
+            RD_DONE_r <= 1'b0; RD_EN_pre <= 1'b0; 
+            //REF_WWL <= 1'b1;
             PC_R_AD <= 2'd0; R_AD <= 16'd0;
             // PC_DATA串转并控制信号
             PC_DATA_CLK <= 1'b0;
             PC_DATA_CLK_INH <= 1'b0;
-            PC_DATA_SHLD <= 1'b0;
+//            PC_DATA_SHLD <= 1'b0; ZXP EIDT 20250923
+            PC_DATA_SHLD <= 1'b1; //ZXP EIDT 20250923
+
         end
         else begin
             // if ( IO_EN_FLAG && (IO_MODEL_r == 2'b10) ) begin
@@ -2207,11 +2222,12 @@ module DRAM_write_read_16core(
                 13'd0: begin
                     DRAM_DATA_OUT1_r <= 8'd0; DRAM_DATA_OUT2_r <= 8'd0; DRAM_DATA_OUT3_r <= 8'd0; DRAM_DATA_OUT4_r <= 8'd0; DRAM_DATA_OUT5_r <= 8'd0; DRAM_DATA_OUT6_r <= 8'd0; DRAM_DATA_OUT7_r <= 8'd0; DRAM_DATA_OUT8_r <= 8'd0;
                     DRAM_DATA_OUT9_r <= 8'd0; DRAM_DATA_OUT10_r <= 8'd0; DRAM_DATA_OUT11_r <= 8'd0; DRAM_DATA_OUT12_r <= 8'd0; DRAM_DATA_OUT13_r <= 8'd0; DRAM_DATA_OUT14_r <= 8'd0; DRAM_DATA_OUT15_r <= 8'd0; DRAM_DATA_OUT16_r <= 8'd0;
-                    RD_DONE_r <= 1'b0; RD_EN_pre <= 1'b0; REF_WWL <= 1'b1;
+                    RD_DONE_r <= 1'b0; RD_EN_pre <= 1'b0; 
+                    //REF_WWL <= 1'b1;
                     PC_R_AD <= 2'd0; R_AD <= 16'd0;
                     PC_DATA_CLK <= 1'b0;
                     PC_DATA_CLK_INH <= 1'b0;
-                    PC_DATA_SHLD <= 1'b0;
+//                    PC_DATA_SHLD <= 1'b0; //ZXP EIDT 20250923
                 end
                 13'd1: begin
                     R_AD[1] <=  DEMUX_ADD1_r [1]; 
@@ -2376,19 +2392,19 @@ module DRAM_write_read_16core(
                 13'd170: begin PC_R_AD[0] <= 1'b0; end
                 13'd171: begin end
                 13'd172: begin end
-                13'd173: begin REF_WWL<=0; RD_EN_pre<=1; end
+                13'd173: begin 
+//                    REF_WWL<=0; 
+                    RD_EN_pre<=1; 
+                end
                 13'd174: begin RD_EN_pre<=0; end
-                13'd175: begin REF_WWL<=1; end
-                // 位串行寄存输出数据
-                // PC_DATA_CLK <= 1'b0;
-                // PC_DATA_CLK_INH <= 1'b0;
-                // PC_DATA_SHLD <= 1'b0;
-                // SH/LD保持一段时间来寄存输出 保持10ns以上
-                13'd176: begin end
-                13'd177: begin end
-                13'd178: begin end
-                13'd179: begin end
-                13'd180: begin 
+				
+                13'd200: begin 
+                    PC_DATA_SHLD <= 1'b0; //ZXP EIDT 20250923
+                end
+
+
+                13'd210: begin 
+                    PC_DATA_SHLD <= 1'b1; //ZXP EIDT 20250923
                     PC_DATA_CLK <= 1'b0;
                     DRAM_DATA_OUT1_r [0] <= DRAM16_data[1];
                     DRAM_DATA_OUT2_r [0] <= DRAM16_data[2];
@@ -2407,8 +2423,8 @@ module DRAM_write_read_16core(
                     DRAM_DATA_OUT15_r [0] <= DRAM16_data[15];
                     DRAM_DATA_OUT16_r [0] <= DRAM16_data[16];
                 end
-                13'd190: begin PC_DATA_CLK <= 1'b1; end
-                13'd200: begin 
+                13'd220: begin PC_DATA_CLK <= 1'b1; end
+                13'd230: begin 
                     PC_DATA_CLK <= 1'b0;
                     DRAM_DATA_OUT1_r [1] <= DRAM16_data[1];
                     DRAM_DATA_OUT2_r [1] <= DRAM16_data[2];
@@ -2427,8 +2443,8 @@ module DRAM_write_read_16core(
                     DRAM_DATA_OUT15_r [1] <= DRAM16_data[15];
                     DRAM_DATA_OUT16_r [1] <= DRAM16_data[16];
                 end
-                13'd210: begin PC_DATA_CLK <= 1'b1; end
-                13'd220: begin 
+                13'd240: begin PC_DATA_CLK <= 1'b1; end
+                13'd250: begin 
                     PC_DATA_CLK <= 1'b0;
                     DRAM_DATA_OUT1_r [2] <= DRAM16_data[1];
                     DRAM_DATA_OUT2_r [2] <= DRAM16_data[2];
@@ -2447,8 +2463,8 @@ module DRAM_write_read_16core(
                     DRAM_DATA_OUT15_r [2] <= DRAM16_data[15];
                     DRAM_DATA_OUT16_r [2] <= DRAM16_data[16];
                 end
-                13'd230: begin PC_DATA_CLK <= 1'b1; end
-                13'd240: begin 
+                13'd260: begin PC_DATA_CLK <= 1'b1; end
+                13'd270: begin 
                     PC_DATA_CLK <= 1'b0;
                     DRAM_DATA_OUT1_r [3] <= DRAM16_data[1];
                     DRAM_DATA_OUT2_r [3] <= DRAM16_data[2];
@@ -2467,8 +2483,8 @@ module DRAM_write_read_16core(
                     DRAM_DATA_OUT15_r [3] <= DRAM16_data[15];
                     DRAM_DATA_OUT16_r [3] <= DRAM16_data[16];
                 end
-                13'd250: begin PC_DATA_CLK <= 1'b1; end
-                13'd260: begin 
+                13'd280: begin PC_DATA_CLK <= 1'b1; end
+                13'd290: begin 
                     PC_DATA_CLK <= 1'b0;
                     DRAM_DATA_OUT1_r [4] <= DRAM16_data[1];
                     DRAM_DATA_OUT2_r [4] <= DRAM16_data[2];
@@ -2487,8 +2503,8 @@ module DRAM_write_read_16core(
                     DRAM_DATA_OUT15_r [4] <= DRAM16_data[15];
                     DRAM_DATA_OUT16_r [4] <= DRAM16_data[16];
                 end
-                13'd270: begin PC_DATA_CLK <= 1'b1; end
-                13'd280: begin 
+                13'd300: begin PC_DATA_CLK <= 1'b1; end
+                13'd310: begin 
                     PC_DATA_CLK <= 1'b0;
                     DRAM_DATA_OUT1_r [5] <= DRAM16_data[1];
                     DRAM_DATA_OUT2_r [5] <= DRAM16_data[2];
@@ -2507,8 +2523,8 @@ module DRAM_write_read_16core(
                     DRAM_DATA_OUT15_r [5] <= DRAM16_data[15];
                     DRAM_DATA_OUT16_r [5] <= DRAM16_data[16];
                 end
-                13'd290: begin PC_DATA_CLK <= 1'b1; end
-                13'd300: begin 
+                13'd320: begin PC_DATA_CLK <= 1'b1; end
+                13'd330: begin 
                     PC_DATA_CLK <= 1'b0;
                     DRAM_DATA_OUT1_r [6] <= DRAM16_data[1];
                     DRAM_DATA_OUT2_r [6] <= DRAM16_data[2];
@@ -2527,8 +2543,8 @@ module DRAM_write_read_16core(
                     DRAM_DATA_OUT15_r [6] <= DRAM16_data[15];
                     DRAM_DATA_OUT16_r [6] <= DRAM16_data[16];
                 end
-                13'd310: begin PC_DATA_CLK <= 1'b1; end
-                13'd320: begin 
+                13'd340: begin PC_DATA_CLK <= 1'b1; end
+                13'd350: begin 
                     PC_DATA_CLK <= 1'b0;
                     DRAM_DATA_OUT1_r [7] <= DRAM16_data[1];
                     DRAM_DATA_OUT2_r [7] <= DRAM16_data[2];
@@ -2548,13 +2564,15 @@ module DRAM_write_read_16core(
                     DRAM_DATA_OUT16_r [7] <= DRAM16_data[16];
                 end
                 // 读出完毕
-                13'd321: begin RD_DONE_r <= 1; end
-                13'd322: begin RD_DONE_r <= 0; end
+                13'd351: begin RD_DONE_r <= 1; end
+                13'd352: begin RD_DONE_r <= 0; end
                 default: begin end
                 endcase
             end
         end
     end
+    
+    assign REF_WWL = ~(RD_EN | VSAEN);
     
     assign LIM_IN=DATA_IN_r;     // LIM_IN, LIM输入 16块芯片的算输入数据
     assign LIM_SEL=CIM_model_r;  // 存算模式选择
@@ -2565,6 +2583,9 @@ module DRAM_write_read_16core(
     reg RD_EN_r2;
     reg RD_EN_r3; // 在400MHz域生成的单周期读使能
     reg RD_EN_r4; // 在VSAEN生成后再打一拍的读使能
+
+    reg RD_EN_pre_r1;
+    wire RD_EN_pre_r1_nxt;
     // 在200MHz域寄存RD_EN_pre并屏蔽写操作
     always @(posedge clk_200m or negedge rst_n) begin
         if(!rst_n) begin
@@ -2572,8 +2593,10 @@ module DRAM_write_read_16core(
         end
         else begin
             RD_EN_pre_r <= RD_EN_pre & (~WR_flag);
+            RD_EN_pre_r1 <= RD_EN_pre_r;
         end
     end
+    assign RD_EN_pre_r1_nxt = RD_EN_pre_r || RD_EN_pre_r1; 
     // 跨到400MHz域并生成一个400MHz时钟周期的脉冲
     always @(posedge clk_400m or negedge rst_n) begin
         if(!rst_n) begin
@@ -2583,7 +2606,7 @@ module DRAM_write_read_16core(
             RD_EN_r4 <= 1'b0;
         end
         else begin
-            RD_EN_r1 <= RD_EN_pre_r;
+            RD_EN_r1 <= RD_EN_pre_r1_nxt;
             RD_EN_r2 <= RD_EN_r1;
             RD_EN_r3 <= RD_EN_r1 & (~RD_EN_r2); // 400MHz域的单周期脉冲
             RD_EN_r4 <= RD_EN_r3; // RD_EN在给VSAEN赋值后再打一拍
